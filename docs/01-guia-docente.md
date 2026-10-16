@@ -13,7 +13,7 @@ Según la documentación de Ludus (mínimos para el servidor):
 | Recurso | Mínimo de Ludus | Nota |
 | --- | --- | --- |
 | CPU | x86_64 con virtualización (`vmx` o `svm`), Passmark > 6000 | |
-| RAM | 32 GB | Esto es para **un** rango |
+| RAM | 32 GB **por rango desplegado** | Recomendación de Ludus. Las VMs de este laboratorio suman menos (≈ 20–24 GB), ver estimación abajo |
 | Disco | 200 GB, NVMe recomendado | Más 50 GB por rango (clones enlazados) |
 | Red | Cable; sin WiFi ni NIC en bonding | |
 | SO | Debian 12/13, o Proxmox 8/9 ya instalado | **No** instales Docker en el host |
@@ -46,7 +46,8 @@ El instalador reinicia el equipo y continúa solo. Sigue el progreso con
 `ludus-install-status` (como root por SSH). Si prefieres revisar el script antes
 de ejecutarlo, descárgalo con `curl https://ludus.cloud/install > install.sh`.
 
-Si ya tienes Proxmox 8/9, sigue la
+Para preparar el equipo paso a paso (Debian 13 o Proxmox 9) mira
+[07-instalar-en-fisico.md](07-instalar-en-fisico.md). Si ya tienes Proxmox 8/9, sigue la
 [guía de despliegue sobre Proxmox](https://docs.ludus.cloud/docs/deployment-options/proxmox).
 
 ## 3. Construir las plantillas (una vez)

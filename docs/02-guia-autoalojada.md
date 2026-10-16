@@ -23,6 +23,9 @@ chip Apple Silicon no sirve: Proxmox y las plantillas de este laboratorio son x8
 
 ## Pasos
 
+> ¿Aún no tienes el sistema instalado? Sigue primero
+> [07-instalar-en-fisico.md](07-instalar-en-fisico.md) (recomendado: Debian 13 en físico).
+
 1. **Instala Debian 12/13** (instalación mínima + SSH) y entra como `root`.
 2. **Instala Ludus** (guía oficial):
    ```bash

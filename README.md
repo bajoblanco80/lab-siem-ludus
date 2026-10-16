@@ -65,7 +65,7 @@ ni para el itinerario avanzado.
 ## Cómo se organiza el repositorio
 
 ```
-docs/                      Guías: conceptos, docente, autoalojada, arquitectura, problemas, perfil lite
+docs/                      Guías: conceptos, docente, autoalojada, arquitectura, problemas, perfil lite, instalación en físico
 rango/                     range-config-*.yml y los 4 roles de Ansible del laboratorio
 itinerario-basico/         Práctica guiada paso a paso
 itinerario-avanzado/       Práctica con ataques y detección
@@ -74,13 +74,34 @@ scripts/                   preparar-config.sh · instalar-roles.sh · verificar-
 VERIFICACION-PENDIENTE.md  Lo que NO se ha podido probar aún y cómo comprobarlo
 ```
 
+## ¿Dónde ejecutarlo?
+
+El servidor del laboratorio necesita un equipo **x86_64 con virtualización** (VT-x o
+AMD-V), conectado **por cable**, y corre **Debian 12/13 o Proxmox 8/9**.
+
+| Opción | ¿Recomendada? | Cuándo |
+| --- | --- | --- |
+| **Debian 13 en un equipo físico** | ✅ **Sí** | Montas el servidor desde cero. Es lo que recomienda Ludus: el instalador añade Proxmox encima |
+| **Proxmox VE 9 en un equipo físico** | ✔ Válida | Ya tienes un Proxmox, o quieres ZFS con varios discos. Ludus avisa de posibles choques con configuraciones previas |
+| Servidor dedicado o instancia «metal» en la nube | ✔ Válida | No tienes hardware. Ludus soporta bare metal alquilado y algunas instancias de AWS, Azure y Google Cloud |
+| Una máquina virtual (VMware Fusion, VirtualBox, Hyper-V…) | ⚠ No recomendada | Requiere virtualización anidada y es más lenta. No sirve en un Mac con Apple Silicon |
+| Equipo de 16 GB | ⚠ Experimental | [Perfil lite](docs/06-perfil-lite.md), solo itinerario básico |
+
+**Recomendación:** un equipo físico dedicado con **Debian 13**. Paso a paso, con las
+dos variantes (Debian o Proxmox), en
+[docs/07-instalar-en-fisico.md](docs/07-instalar-en-fisico.md).
+
+**Hardware orientativo** (según los requisitos de Ludus): CPU con Passmark > 6000,
+**32 GB de RAM por rango desplegado**, 200 GB de disco para las plantillas más 50 GB por rango
+(mejor NVMe) y red por cable.
+
 ## Por dónde empezar
 
 | Eres… | Lee |
 | --- | --- |
-| **Docente** que monta el servidor para la clase | [docs/01-guia-docente.md](docs/01-guia-docente.md) |
+| **Docente** que monta el servidor para la clase | [docs/07-instalar-en-fisico.md](docs/07-instalar-en-fisico.md) y [docs/01-guia-docente.md](docs/01-guia-docente.md) |
 | **Alumno** con un usuario de Ludus ya creado | [docs/00-conceptos.md](docs/00-conceptos.md) y tu itinerario |
-| **Alumno** que lo monta en su propio equipo | [docs/02-guia-autoalojada.md](docs/02-guia-autoalojada.md) |
+| **Alumno** que lo monta en su propio equipo | [docs/07-instalar-en-fisico.md](docs/07-instalar-en-fisico.md) y [docs/02-guia-autoalojada.md](docs/02-guia-autoalojada.md) |
 
 ## Despliegue en tres comandos
 

@@ -111,6 +111,20 @@ Ejecuta cada ataque y anota el `rule.id` que salta en tu versión. Si difiere, c
 - [ ] Mide el consumo real del host (`free -h`) y ajusta la tabla de `docs/06-perfil-lite.md`.
 - [ ] `scripts/verificar-laboratorio.sh --itinerario lite` da todo OK con 3 agentes.
 
+### H. Instalación en físico (`docs/07-instalar-en-fisico.md`)
+
+- [ ] El tutorial del **camino A** (Debian 13 → Ludus) se completa en un equipo real sin
+      pasos que falten (selección de software, SSH con usuario normal, `su -`).
+- [ ] El instalador de Ludus **reinicia** y continúa solo, y `ludus-install-status` termina.
+- [ ] El **camino B** (Proxmox 9 → Ludus): confirma las preguntas de *datastores* del instalador
+      y que no hace falta tocar `vmbr0`.
+- [ ] Los comandos de grabación del USB (`dd`) en Linux y macOS, con tu versión de ISO.
+- [ ] Qué puerto de WireGuard hay que abrir para el acceso remoto (el tutorial no da un
+      número porque no está verificado) y que el panel de Proxmox y los puertos de
+      administración de Ludus **no** quedan expuestos.
+- [ ] Debian 13 es compatible con **todas** las plantillas usadas aquí
+      (`ludus templates build`), no solo con la instalación del servidor.
+
 ## Cosas que NO prometemos
 - Kerberoasting, DCSync y otros ataques de identidad (exigen SPN, auditoría de Kerberos y Sysmon).
 - Detección de tráfico de red (no hay IDS).
