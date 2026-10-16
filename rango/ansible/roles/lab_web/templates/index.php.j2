@@ -1,0 +1,22 @@
+<?php
+// ============================================================================
+// APLICACIÓN VULNERABLE A PROPÓSITO (inyección SQL). SOLO PARA EL LABORATORIO.
+// No la publiques fuera del rango aislado de Ludus.
+// ============================================================================
+$db = new mysqli('{{ lab_db_ip_final }}', 'tienda_app', '{{ lab_db_app_password }}', 'tienda');
+if ($db->connect_error) { http_response_code(500); exit('Error de base de datos'); }
+
+$q = $_GET['q'] ?? '';
+// VULNERABLE: la entrada se concatena en la consulta sin parametrizar.
+$sql = "SELECT nombre, precio FROM productos WHERE nombre LIKE '%" . $q . "%'";
+$res = @$db->query($sql);
+?>
+<!doctype html>
+<meta charset="utf-8">
+<title>Tienda del laboratorio</title>
+<h1>Tienda del laboratorio</h1>
+<form><input name="q" value="<?= htmlspecialchars($q) ?>"> <button>Buscar</button></form>
+<p><a href="login.php">Acceso de clientes</a></p>
+<ul>
+<?php if ($res) { while ($r = $res->fetch_assoc()) { echo '<li>' . htmlspecialchars($r['nombre']) . ' — ' . htmlspecialchars($r['precio']) . ' €</li>'; } } else { echo '<li>Consulta no válida</li>'; } ?>
+</ul>

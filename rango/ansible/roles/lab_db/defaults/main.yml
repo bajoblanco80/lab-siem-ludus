@@ -1,0 +1,11 @@
+---
+# Dónde está el servidor web (solo él podrá conectarse a la base de datos).
+lab_web_vlan: 10
+lab_web_octet: 20
+
+# Para forzar la IP del web a mano: lab_web_ip: "10.2.10.20"
+lab_web_ip: ""
+
+# Clave del usuario de la aplicación. NO la escribas aquí: se inyecta desde el
+# range-config (global_role_vars) con scripts/preparar-config.sh.
+lab_db_app_password: ""

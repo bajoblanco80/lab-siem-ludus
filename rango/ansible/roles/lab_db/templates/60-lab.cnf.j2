@@ -1,0 +1,11 @@
+# Gestionado por Ansible (rol lab_db). Laboratorio académico.
+[mysqld]
+# El acceso real lo limita el usuario (solo desde el web) y el firewall del rango.
+bind-address = 0.0.0.0
+
+# Auditoría: registra conexiones y consultas para que el SIEM las pueda leer.
+# Si el plugin no existe en tu versión de MariaDB, borra estas 4 líneas.
+plugin_load_add = server_audit
+server_audit_logging = ON
+server_audit_events = CONNECT,QUERY
+server_audit_file_path = /var/log/mysql/mariadb-audit.log

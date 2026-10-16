@@ -1,0 +1,33 @@
+---
+# Instalación silenciosa del MSI OFICIAL. Requiere salida a Internet: despliega
+# SIEMPRE antes de activar el modo de pruebas (ludus testing start).
+# Referencia: https://documentation.wazuh.com/current/installation-guide/wazuh-agent/wazuh-agent-package-windows.html
+
+- name: Definir el nombre del MSI
+  ansible.builtin.set_fact:
+    lab_wazuh_msi: "wazuh-agent-{{ lab_wazuh_agent_version }}-1.msi"
+
+- name: Descargar el MSI del agente
+  ansible.windows.win_get_url:
+    url: "https://packages.wazuh.com/4.x/windows/{{ lab_wazuh_msi }}"
+    dest: "C:\\Windows\\Temp\\{{ lab_wazuh_msi }}"
+  when: lab_wazuh_agent_version | length > 0
+
+# win_package ESPERA a que termine el instalador (msiexec lanzado desde un shell
+# no lo hace) y para un MSI añade él mismo el modo silencioso y sin reinicio.
+- name: Instalar el agente (espera a que termine el MSI)
+  ansible.windows.win_package:
+    path: "C:\\Windows\\Temp\\{{ lab_wazuh_msi }}"
+    arguments: >-
+      WAZUH_MANAGER="{{ lab_siem_ip_final }}"
+      WAZUH_AGENT_NAME="{{ ansible_hostname }}"
+    creates_path: C:\Program Files (x86)\ossec-agent\wazuh-agent.exe
+    state: present
+  when: lab_wazuh_agent_version | length > 0
+
+- name: Activar y arrancar el servicio del agente
+  ansible.windows.win_service:
+    name: WazuhSvc
+    start_mode: auto
+    state: started
+  when: lab_wazuh_agent_version | length > 0

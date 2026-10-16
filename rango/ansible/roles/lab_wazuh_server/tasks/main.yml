@@ -1,0 +1,75 @@
+---
+# Instala Wazuh (manager + indexer + dashboard) con el asistente OFICIAL de
+# packages.wazuh.com. No se ejecuta ningún script de terceros.
+# Referencia: https://documentation.wazuh.com/current/quickstart.html
+
+- name: Instalar requisitos del asistente
+  ansible.builtin.apt:
+    name:
+      - curl
+      - gnupg
+      - apt-transport-https
+      - ca-certificates
+      - rsyslog
+    state: present
+    update_cache: true
+
+- name: Comprobar si Wazuh ya está instalado
+  ansible.builtin.stat:
+    path: /usr/share/wazuh-dashboard
+  register: lab_wazuh_installed
+
+- name: Descargar el asistente oficial de instalación
+  ansible.builtin.get_url:
+    url: "https://packages.wazuh.com/{{ lab_wazuh_branch }}/wazuh-install.sh"
+    dest: "{{ lab_wazuh_workdir }}/wazuh-install.sh"
+    mode: "0700"
+  when: not lab_wazuh_installed.stat.exists
+
+- name: Ejecutar el asistente (instalación todo-en-uno, tarda 10-20 minutos)
+  ansible.builtin.shell: >
+    bash ./wazuh-install.sh -a > {{ lab_wazuh_workdir }}/wazuh-install-output.txt 2>&1
+  args:
+    chdir: "{{ lab_wazuh_workdir }}"
+    executable: /bin/bash
+    creates: /usr/share/wazuh-dashboard
+  async: 3600
+  poll: 30
+  when: not lab_wazuh_installed.stat.exists
+
+- name: Guardar las claves generadas en un archivo legible solo por root
+  ansible.builtin.shell: >
+    tar -O -xf wazuh-install-files.tar wazuh-install-files/wazuh-passwords.txt
+    > {{ lab_wazuh_workdir }}/wazuh-passwords.txt &&
+    chmod 600 {{ lab_wazuh_workdir }}/wazuh-passwords.txt
+  args:
+    chdir: "{{ lab_wazuh_workdir }}"
+    executable: /bin/bash
+    creates: "{{ lab_wazuh_workdir }}/wazuh-passwords.txt"
+
+- name: Asegurar que los servicios están activos y arrancan con el sistema
+  ansible.builtin.service:
+    name: "{{ item }}"
+    state: started
+    enabled: true
+  loop:
+    - wazuh-indexer
+    - wazuh-manager
+    - filebeat
+    - wazuh-dashboard
+
+- name: Esperar a que el dashboard responda por HTTPS
+  ansible.builtin.uri:
+    url: "https://{{ ansible_default_ipv4.address }}/"
+    validate_certs: false
+    status_code: [200, 302]
+  register: lab_wazuh_dashboard
+  retries: 20
+  delay: 15
+  until: lab_wazuh_dashboard.status in [200, 302]
+
+- name: Mostrar dónde están las claves (no se imprimen en el log)
+  ansible.builtin.debug:
+    msg: >-
+      Wazuh listo. Dashboard: https://{{ ansible_default_ipv4.address }}
+      Claves: sudo cat {{ lab_wazuh_workdir }}/wazuh-passwords.txt (en la VM del SIEM)

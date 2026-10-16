@@ -1,0 +1,83 @@
+---
+# Instalación del agente desde el repositorio apt OFICIAL de Wazuh.
+# Referencia: https://documentation.wazuh.com/current/installation-guide/wazuh-agent/wazuh-agent-package-linux.html
+
+- name: Requisitos del agente (rsyslog crea /var/log/auth.log en Debian 12)
+  ansible.builtin.apt:
+    name:
+      - gnupg
+      - apt-transport-https
+      - curl
+      - rsyslog
+    state: present
+    update_cache: true
+
+- name: Descargar la clave GPG de Wazuh
+  ansible.builtin.get_url:
+    url: https://packages.wazuh.com/key/GPG-KEY-WAZUH
+    dest: /tmp/GPG-KEY-WAZUH
+    mode: "0644"
+
+- name: Importar la clave en un anillo dedicado
+  ansible.builtin.shell: >
+    gpg --no-default-keyring --keyring gnupg-ring:/usr/share/keyrings/wazuh.gpg
+    --import /tmp/GPG-KEY-WAZUH && chmod 644 /usr/share/keyrings/wazuh.gpg
+  args:
+    executable: /bin/bash
+    creates: /usr/share/keyrings/wazuh.gpg
+
+- name: Añadir el repositorio oficial
+  ansible.builtin.copy:
+    dest: /etc/apt/sources.list.d/wazuh.list
+    content: "deb [signed-by=/usr/share/keyrings/wazuh.gpg] https://packages.wazuh.com/4.x/apt/ stable main\n"
+    mode: "0644"
+
+- name: Instalar el agente (WAZUH_MANAGER lo registra automáticamente)
+  ansible.builtin.apt:
+    name: "{{ 'wazuh-agent=' ~ lab_wazuh_agent_version ~ '-1' if (lab_wazuh_agent_version | length > 0) else 'wazuh-agent' }}"
+    state: present
+    update_cache: true
+  environment:
+    WAZUH_MANAGER: "{{ lab_siem_ip_final }}"
+    WAZUH_AGENT_NAME: "{{ ansible_hostname }}"
+
+- name: Fijar la versión para que un apt upgrade no deje el agente por delante del manager
+  ansible.builtin.dpkg_selections:
+    name: wazuh-agent
+    selection: hold
+
+- name: Añadir logs adicionales a monitorizar
+  ansible.builtin.blockinfile:
+    path: /var/ossec/etc/ossec.conf
+    marker: "<!-- {mark} LAB: logs adicionales -->"
+    insertbefore: "</ossec_config>"
+    block: |
+      {% for lf in lab_wazuh_localfiles %}
+        <localfile>
+          <log_format>{{ lf.format }}</log_format>
+          <location>{{ lf.location }}</location>
+        </localfile>
+      {% endfor %}
+  when: lab_wazuh_localfiles | length > 0
+  notify: Reiniciar agente Wazuh en Linux
+
+- name: Añadir directorios con monitorización de integridad (FIM) en tiempo real
+  ansible.builtin.blockinfile:
+    path: /var/ossec/etc/ossec.conf
+    marker: "<!-- {mark} LAB: FIM adicional -->"
+    insertbefore: "</ossec_config>"
+    block: |
+      <syscheck>
+        {% for d in lab_wazuh_fim_dirs %}
+        <directories realtime="yes" check_all="yes" report_changes="yes">{{ d }}</directories>
+        {% endfor %}
+      </syscheck>
+  when: lab_wazuh_fim_dirs | length > 0
+  notify: Reiniciar agente Wazuh en Linux
+
+- name: Activar y arrancar el agente
+  ansible.builtin.systemd:
+    name: wazuh-agent
+    daemon_reload: true
+    enabled: true
+    state: started

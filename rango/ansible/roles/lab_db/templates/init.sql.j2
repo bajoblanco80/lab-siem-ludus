@@ -1,0 +1,28 @@
+-- Datos 100 % ficticios. Laboratorio académico.
+CREATE DATABASE IF NOT EXISTS tienda CHARACTER SET utf8mb4;
+USE tienda;
+
+CREATE TABLE IF NOT EXISTS productos (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  nombre VARCHAR(80) NOT NULL,
+  precio DECIMAL(8,2) NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS usuarios (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  usuario VARCHAR(40) NOT NULL,
+  clave VARCHAR(80) NOT NULL,
+  rol VARCHAR(20) NOT NULL
+);
+
+INSERT INTO productos (nombre, precio) VALUES
+  ('Teclado', 24.90), ('Ratón', 12.50), ('Monitor 24"', 139.00), ('Webcam', 39.95);
+
+-- "clave" en claro a propósito: es parte de lo que el alumno debe detectar al auditar.
+INSERT INTO usuarios (usuario, clave, rol) VALUES
+  ('admin', 'clave-ficticia-admin', 'admin'),
+  ('maria', 'clave-ficticia-maria', 'cliente');
+
+CREATE USER IF NOT EXISTS 'tienda_app'@'{{ lab_web_ip_final }}' IDENTIFIED BY '{{ lab_db_app_password }}';
+GRANT SELECT ON tienda.* TO 'tienda_app'@'{{ lab_web_ip_final }}';
+FLUSH PRIVILEGES;

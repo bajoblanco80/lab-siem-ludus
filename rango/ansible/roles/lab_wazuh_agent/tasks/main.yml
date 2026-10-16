@@ -1,0 +1,18 @@
+---
+- name: Calcular la IP del SIEM a partir de la red del rango
+  ansible.builtin.set_fact:
+    lab_siem_ip_final: >-
+      {{ lab_siem_ip if (lab_siem_ip | length > 0)
+         else (ludus_dns_server.split('.')[0:2] + [lab_siem_vlan | string, lab_siem_octet | string]) | join('.') }}
+
+- name: Mostrar el manager contra el que se registra el agente
+  ansible.builtin.debug:
+    msg: "Agente {{ ansible_hostname }} -> manager {{ lab_siem_ip_final }}"
+
+- name: Agente en Linux (Debian/Ubuntu)
+  ansible.builtin.include_tasks: linux.yml
+  when: ansible_os_family == "Debian"
+
+- name: Agente en Windows
+  ansible.builtin.include_tasks: windows.yml
+  when: ansible_os_family == "Windows"

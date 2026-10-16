@@ -1,0 +1,19 @@
+# Gestionado por Ansible (rol lab_web). Laboratorio académico.
+server {
+    listen 80 default_server;
+    server_name _;
+    root /var/www/tienda;
+    index index.php;
+
+    access_log /var/log/nginx/access.log;
+    error_log  /var/log/nginx/error.log;
+
+    location / {
+        try_files $uri $uri/ =404;
+    }
+
+    location ~ \.php$ {
+        include snippets/fastcgi-php.conf;
+        fastcgi_pass unix:/run/php/php{{ lab_php_version }}-fpm.sock;
+    }
+}

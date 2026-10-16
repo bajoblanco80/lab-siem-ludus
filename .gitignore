@@ -1,0 +1,23 @@
+# Configuraciones con claves generadas: NUNCA al repositorio
+*.local.yml
+*.local.yaml
+
+# Perfiles VPN WireGuard, claves y credenciales
+*.conf
+!rango/ansible/**/*.conf.j2
+*.pem
+*.key
+*.rdp
+*.zip
+wazuh-passwords.txt
+wazuh-install-files.tar
+.env
+
+# Informes de estado generados y entregas de alumnos
+estado*.md
+entregas/
+
+# Entornos locales
+.venv/
+__pycache__/
+*.retry

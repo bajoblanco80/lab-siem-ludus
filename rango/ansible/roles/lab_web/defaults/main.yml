@@ -1,0 +1,13 @@
+---
+# Dónde está la base de datos.
+lab_db_vlan: 10
+lab_db_octet: 21
+
+# Para forzar la IP de la BD a mano: lab_db_ip: "10.2.10.21"
+lab_db_ip: ""
+
+# Inyectada desde el range-config con scripts/preparar-config.sh. No la escribas aquí.
+lab_db_app_password: ""
+
+# Versión de PHP del paquete: Debian 12 = 8.2, Debian 13 = 8.4.
+lab_php_version: "8.2"

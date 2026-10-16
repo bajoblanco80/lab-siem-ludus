@@ -1,0 +1,7 @@
+---
+# Rama de Wazuh que instala el asistente oficial. El asistente instala la última
+# 4.14.x disponible; el agente se fija a lab_wazuh_agent_version (debe ser <= manager).
+lab_wazuh_branch: "4.14"
+
+# Directorio donde el asistente deja wazuh-install-files.tar (contiene las claves).
+lab_wazuh_workdir: /root

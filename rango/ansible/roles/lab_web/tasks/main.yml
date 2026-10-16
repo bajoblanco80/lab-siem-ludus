@@ -1,0 +1,66 @@
+---
+- name: Exigir la clave de la aplicación
+  ansible.builtin.assert:
+    that: lab_db_app_password | length >= 12
+    fail_msg: "lab_db_app_password vacía o corta: ejecuta scripts/preparar-config.sh"
+
+- name: Calcular la IP de la base de datos
+  ansible.builtin.set_fact:
+    lab_db_ip_final: >-
+      {{ lab_db_ip if (lab_db_ip | length > 0)
+         else (ludus_dns_server.split('.')[0:2] + [lab_db_vlan | string, lab_db_octet | string]) | join('.') }}
+
+- name: Instalar nginx y PHP
+  ansible.builtin.apt:
+    name:
+      - nginx
+      - "php{{ lab_php_version }}-fpm"
+      - "php{{ lab_php_version }}-mysql"
+      - rsyslog
+    state: present
+    update_cache: true
+
+- name: Directorio de la aplicación
+  ansible.builtin.file:
+    path: /var/www/tienda
+    state: directory
+    mode: "0755"
+
+- name: Publicar la aplicación de ejemplo (VULNERABLE A PROPÓSITO)
+  ansible.builtin.template:
+    src: "{{ item }}.j2"
+    dest: "/var/www/tienda/{{ item }}"
+    mode: "0644"
+  loop:
+    - index.php
+    - login.php
+  notify: Recargar nginx
+
+- name: Sitio de nginx
+  ansible.builtin.template:
+    src: tienda.conf.j2
+    dest: /etc/nginx/sites-available/tienda
+    mode: "0644"
+  notify: Recargar nginx
+
+- name: Activar el sitio y quitar el sitio por defecto
+  ansible.builtin.file:
+    src: /etc/nginx/sites-available/tienda
+    dest: /etc/nginx/sites-enabled/tienda
+    state: link
+  notify: Recargar nginx
+
+- name: Quitar el sitio por defecto
+  ansible.builtin.file:
+    path: /etc/nginx/sites-enabled/default
+    state: absent
+  notify: Recargar nginx
+
+- name: Servicios activos
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+    state: started
+    enabled: true
+  loop:
+    - "php{{ lab_php_version }}-fpm"
+    - nginx

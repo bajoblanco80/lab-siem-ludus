@@ -1,0 +1,56 @@
+---
+- name: Exigir una clave para el usuario de la aplicación
+  ansible.builtin.assert:
+    that: lab_db_app_password | length >= 12
+    fail_msg: "lab_db_app_password vacía o corta: ejecuta scripts/preparar-config.sh"
+
+- name: Calcular la IP del servidor web
+  ansible.builtin.set_fact:
+    lab_web_ip_final: >-
+      {{ lab_web_ip if (lab_web_ip | length > 0)
+         else (ludus_dns_server.split('.')[0:2] + [lab_web_vlan | string, lab_web_octet | string]) | join('.') }}
+
+- name: Instalar MariaDB
+  ansible.builtin.apt:
+    name:
+      - mariadb-server
+      - rsyslog
+    state: present
+    update_cache: true
+
+- name: Configuración del laboratorio (escucha en la red y registro de auditoría)
+  ansible.builtin.template:
+    src: 60-lab.cnf.j2
+    dest: /etc/mysql/mariadb.conf.d/60-lab.cnf
+    mode: "0644"
+  notify: Reiniciar MariaDB
+
+- name: Directorio del log de auditoría
+  ansible.builtin.file:
+    path: /var/log/mysql
+    state: directory
+    owner: mysql
+    group: adm
+    mode: "0750"
+
+- name: Aplicar los cambios de configuración antes de crear datos
+  ansible.builtin.meta: flush_handlers
+
+- name: Copiar el script SQL inicial
+  ansible.builtin.template:
+    src: init.sql.j2
+    dest: /root/lab-init.sql
+    mode: "0600"
+
+- name: Crear base de datos de ejemplo, datos ficticios y usuario de la aplicación
+  ansible.builtin.shell: mariadb < /root/lab-init.sql
+  args:
+    executable: /bin/bash
+    creates: /root/.lab-db-initialised
+
+- name: Marcar la base de datos como inicializada
+  ansible.builtin.file:
+    path: /root/.lab-db-initialised
+    state: touch
+    mode: "0600"
+  changed_when: false

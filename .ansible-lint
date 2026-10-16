@@ -1,0 +1,6 @@
+# Las variables lab_siem_*, lab_web_*, lab_db_* se comparten entre roles a propósito
+# (las fija global_role_vars en el range-config), por eso no llevan el prefijo del rol.
+skip_list:
+  - var-naming[no-role-prefix]
+  # tar -O extrae un único fichero a stdout para guardar las claves con permisos 600.
+  - command-instead-of-module
