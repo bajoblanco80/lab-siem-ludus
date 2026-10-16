@@ -13,15 +13,25 @@ YAML y se levanta con tres comandos.
 
 ## Qué vas a montar
 
-```
-                         VLAN 20 · SOC                         VLAN 10 · Servicios auditados
-                   ┌──────────────────────┐        ┌───────────────────────────────────────────┐
-   (avanzado)      │  siem   .10          │ 1514   │  DC01   .10  Windows Server 2022 · AD     │
-   ┌────────┐      │  Wazuh manager       │◄───────┤  web    .20  nginx + PHP (tienda)         │
-   │ kali   │      │  + indexer           │ 1515   │  db     .21  MariaDB                      │
-   │ .99    │      │  + dashboard (443)   │        │  win11  .30  Windows 11 · unido al dominio│
-   └────────┘      └──────────────────────┘        └───────────────────────────────────────────┘
-        └── ataques solo con el modo de pruebas activo ──►
+```mermaid
+flowchart LR
+    subgraph V20["VLAN 20 · SOC"]
+        siem["<b>siem</b> · .10<br/>Wazuh manager + indexer<br/>+ dashboard (443)"]
+        kali["<b>kali</b> · .99<br/>(solo avanzado)"]
+    end
+    subgraph V10["VLAN 10 · Servicios auditados"]
+        dc["<b>DC01</b> · .10<br/>Windows Server 2022<br/>Active Directory"]
+        web["<b>web</b> · .20<br/>nginx + PHP (tienda)"]
+        db["<b>db</b> · .21<br/>MariaDB"]
+        w11["<b>WIN11-01</b> · .30<br/>Windows 11<br/>unido al dominio"]
+    end
+    dc -- "1514 / 1515" --> siem
+    web -- "1514 / 1515" --> siem
+    db -- "1514 / 1515" --> siem
+    w11 -- "1514 / 1515" --> siem
+    web -- "3306 (solo web)" --> db
+    w11 -. "dominio lab.local" .-> dc
+    kali -. "ataques (solo con ludus testing start)" .-> V10
 ```
 
 | Componente | Función | RAM |

@@ -26,21 +26,49 @@ puedes forzarla con `lab_siem_ip` en `role_vars`.
 
 ## Flujo de datos de auditoría
 
-```
- web ──► /var/log/nginx/access.log ──┐
- web ──► /var/log/auth.log (SSH) ────┤
- web ──► FIM de /var/www/tienda ─────┤
- db  ──► /var/log/mysql/…audit.log ──┼─► agente Wazuh ──1514/tcp──► manager ─► reglas ─► alertas ─► indexer ─► dashboard
- db  ──► /var/log/auth.log, FIM ─────┤                                  ▲
- DC01 ─► Registro de seguridad 4625 ─┤                          1515/tcp (registro del agente)
- WIN11 ► Registro de seguridad ──────┘
+```mermaid
+flowchart LR
+    subgraph fuentes["Fuentes de auditoría"]
+        w1["web · access.log de nginx"]
+        w2["web · auth.log (SSH)"]
+        w3["web · FIM de /var/www/tienda"]
+        d1["db · log de auditoría MariaDB"]
+        d2["db · auth.log y FIM de /etc/mysql"]
+        dc1["DC01 · Registro de seguridad (4625…)"]
+        c1["WIN11-01 · Registro de seguridad"]
+    end
+    ag["Agente Wazuh<br/>(en cada equipo)"]
+    mgr["Wazuh manager<br/>decodifica + aplica reglas"]
+    idx[("Wazuh indexer")]
+    dash["Dashboard<br/>https://IP-del-SIEM"]
+
+    w1 & w2 & w3 & d1 & d2 & dc1 & c1 --> ag
+    ag -- "1514/tcp eventos" --> mgr
+    ag -. "1515/tcp registro del agente" .-> mgr
+    mgr -- "alertas" --> idx --> dash
 ```
 
 ## Orden de despliegue (lo gestiona `depends_on`)
+
+```mermaid
+flowchart TD
+    A["1 · Ludus crea las VMs y la red<br/>DC01 configura el dominio · WIN11-01 se une"]
+    A --> S["2a · siem: lab_wazuh_server<br/>(10–20 min)"]
+    A --> P["2b · web y db: lab_web y lab_db<br/>app y datos de ejemplo<br/>(no dependen del SIEM)"]
+    S --> C{"¿terminó lab_wazuh_server?<br/>depends_on del agente"}
+    C -- "no" --> W["el agente espera"] --> C
+    C -- "sí" --> G["3 · lab_wazuh_agent<br/>en DC01, web, db y WIN11-01"]
+    P --> G
+    G --> F(["SUCCESS en ludus range status"])
+```
+
 1. Se crean las VMs y la red; Ludus configura el dominio en `DC01` y une `WIN11-01`.
-2. En `siem` se ejecuta `lab_wazuh_server` (10–20 min).
-3. **Solo cuando termina**, se ejecuta `lab_wazuh_agent` en el resto. Sin
-   `depends_on` un agente intentaría registrarse antes de que el manager exista.
+2. En paralelo: el SIEM instala Wazuh (`lab_wazuh_server`, 10–20 min) y `web` y
+   `db` instalan sus servicios (`lab_web`, `lab_db`).
+3. El rol `lab_wazuh_agent` de **cada** VM espera a que `lab_wazuh_server` termine
+   (`depends_on`). En `web` y `db` se ejecuta además **después** de su rol de
+   servicio, para registrar ya los logs de nginx y MariaDB. Sin `depends_on` un
+   agente intentaría registrarse antes de que el manager exista.
 
 ## Qué decisiones de diseño merece la pena discutir
 
