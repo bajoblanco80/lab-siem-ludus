@@ -12,7 +12,7 @@
 #                      salen como NO VERIFICABLE)
 #   WEB_IP             IP del servidor web (opcional)
 #
-# Uso: scripts/verificar-laboratorio.sh [--itinerario basico|avanzado] [--informe estado.md]
+# Uso: scripts/verificar-laboratorio.sh [--itinerario basico|avanzado|lite] [--informe estado.md]
 set -uo pipefail
 
 itinerario="basico"
@@ -25,14 +25,19 @@ while [[ $# -gt 0 ]]; do
     *) echo "Argumento desconocido: $1" >&2; exit 2 ;;
   esac
 done
-case "$itinerario" in basico | avanzado) ;; *) echo "--itinerario: basico|avanzado" >&2; exit 2 ;; esac
+case "$itinerario" in basico | avanzado | lite) ;; *) echo "--itinerario: basico|avanzado|lite" >&2; exit 2 ;; esac
 : "${SIEM_IP:?Define SIEM_IP (IP de la VM del SIEM)}"
 API_USER="${WAZUH_API_USER:-wazuh}"
 API_PASS="${WAZUH_API_PASS:-}"
 WEB_IP="${WEB_IP:-}"
 
 # Agentes que deben aparecer activos. Los nombres son los hostnames del range-config.
-esperados=(DC01 web db WIN11-01)
+# El perfil lite no incluye el cliente Windows 11.
+if [[ "$itinerario" == "lite" ]]; then
+  esperados=(DC01 web db)
+else
+  esperados=(DC01 web db WIN11-01)
+fi
 
 fallos=0
 lineas=()

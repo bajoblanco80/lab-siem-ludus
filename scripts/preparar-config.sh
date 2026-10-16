@@ -3,13 +3,13 @@
 # __CLAVE_*__ por claves aleatorias. El .local.yml está en .gitignore: es el que
 # se carga en Ludus; el .yml original se queda sin secretos en el repositorio.
 #
-# Uso: scripts/preparar-config.sh basico|avanzado
+# Uso: scripts/preparar-config.sh basico|avanzado|lite
 set -euo pipefail
 
 itinerario="${1:-}"
 case "$itinerario" in
-  basico | avanzado) ;;
-  *) echo "Uso: $0 basico|avanzado" >&2; exit 2 ;;
+  basico | avanzado | lite) ;;
+  *) echo "Uso: $0 basico|avanzado|lite" >&2; exit 2 ;;
 esac
 
 raiz="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

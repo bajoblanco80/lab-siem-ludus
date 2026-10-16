@@ -100,10 +100,21 @@ Ejecuta cada ataque y anota el `rule.id` que salta en tu versión. Si difiere, c
       Windows Server 2022 y Windows 11 Enterprise y cuánto dura tu curso.
 - [ ] `ludus power --help`: confirma cómo apagar las VMs (la práctica remite a ese comando).
 
+### G. Perfil lite (16 GB)
+
+- [ ] Con `range-config-lite.yml` el despliegue llega a `SUCCESS` en un equipo dedicado de 16 GB.
+- [ ] **Wazuh es estable con 6 GB** (indexer, manager y dashboard activos tras 30 min y tras
+      generar actividad). Si no, sube `siem` a 7–8 GB y baja `DC01`.
+- [ ] **Windows Server 2022 es usable con 3 GB** y el dominio funciona.
+- [ ] `web` y `db` con 1 GB instalan sus paquetes y sirven la tienda sin quedarse sin memoria.
+- [ ] El router de Ludus funciona con `router: {ram_gb: 1, cpus: 1}`.
+- [ ] Mide el consumo real del host (`free -h`) y ajusta la tabla de `docs/06-perfil-lite.md`.
+- [ ] `scripts/verificar-laboratorio.sh --itinerario lite` da todo OK con 3 agentes.
+
 ## Cosas que NO prometemos
 - Kerberoasting, DCSync y otros ataques de identidad (exigen SPN, auditoría de Kerberos y Sysmon).
 - Detección de tráfico de red (no hay IDS).
-- Una instalación en un equipo con menos de 32 GB de RAM.
+- Una instalación en un equipo con menos de 32 GB de RAM **fuera del perfil lite**, que es experimental.
 
 ## Aviso sobre fuentes
 El documento de análisis del que parte este laboratorio contiene afirmaciones que

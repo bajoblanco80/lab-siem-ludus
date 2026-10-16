@@ -28,6 +28,9 @@ rangos simultáneos ≈ (RAM del host − 8 GB) / RAM por rango
   128 GB  →  6 básicos  o  5 avanzados
   256 GB  → 12 básicos  o 10 avanzados
 ```
+Un equipo de 16 GB **no** sirve para una clase: solo da para un rango en el
+[perfil lite](06-perfil-lite.md), por debajo del mínimo soportado por Ludus.
+
 Si hay más alumnos que rangos, haz turnos o trabaja en parejas (un rango por
 pareja). Los rangos apagados no consumen RAM.
 

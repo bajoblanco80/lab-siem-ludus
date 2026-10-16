@@ -17,6 +17,17 @@ mucho tiempo de espera) · **Rango:** `range-config-basico.yml`
 - Tu CLI de `ludus` funciona: `ludus range status` no da error.
 - Conoces el [uso responsable](../docs/05-uso-responsable.md).
 
+## Perfil lite (equipo de 16 GB)
+Si usas el [perfil lite](../docs/06-perfil-lite.md) cambia esto y el resto es igual:
+
+| Dónde | Cambio |
+| --- | --- |
+| 1.3 | `scripts/preparar-config.sh lite` y carga `range-config-lite.local.yml` |
+| Parte 2, checkpoint | 4 VMs (`siem`, `DC01`, `web`, `db`), no 5 |
+| 3.4 | `scripts/verificar-laboratorio.sh --itinerario lite ...` (3 agentes: `DC01`, `web`, `db`) |
+| Parte 4 (P6) | La tabla de agentes tiene 3 filas |
+| Parte 5, acciones D y E | No hay `WIN11-01`: hazlas en `DC01` (RDP con `ludus range rdp`). En E crea el usuario con `net user prueba Cl4ve-Prueba! /add /domain`, y busca los eventos con `agent.name: DC01` |
+
 ## Qué entregas
 1. `estado.md` generado por `verificar-laboratorio.sh --informe` (Parte 3).
 2. Las capturas y respuestas marcadas con 📝.
@@ -75,7 +86,7 @@ Mientras esperas, ve contestando.
 📝 **P4.** Cuando el log llegue a la instalación de Wazuh, mide cuánto tarda.
 ¿Por qué crees que los agentes no se instalan hasta que termina?
 
-✅ **Checkpoint:** `ludus range status` muestra `SUCCESS` y 5 VMs.
+✅ **Checkpoint:** `ludus range status` muestra `SUCCESS` y 5 VMs (4 en el perfil lite).
 
 ---
 

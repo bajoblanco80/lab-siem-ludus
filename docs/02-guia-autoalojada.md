@@ -13,8 +13,10 @@ eres a la vez administrador y alumno.
 | Red | Por cable. Ludus no admite WiFi |
 | Sistema | Debian 12/13 limpio, o Proxmox 8/9 |
 
-Si no cumples esto, pide acceso al servidor del centro: una instalación
-reducida no se soporta en este repositorio.
+Si tienes **16 GB** en un equipo dedicado, mira el
+[perfil lite](06-perfil-lite.md) (solo itinerario básico y fuera de lo soportado
+por Ludus). Si no cumples ni eso, pide acceso al servidor del centro. Un Mac con
+chip Apple Silicon no sirve: Proxmox y las plantillas de este laboratorio son x86.
 
 > **Importante.** La instalación convierte el equipo en un servidor Proxmox. No
 > lo hagas en una máquina con datos que quieras conservar sin hacer copia antes.

@@ -1,0 +1,126 @@
+# yaml-language-server: $schema=https://docs.ludus.cloud/schemas/range-config.json
+# =============================================================================
+# LABORATORIO SIEM - PERFIL LITE (itinerario básico en un equipo de 16 GB)
+#
+#   VLAN 20 (SOC)       siem .10         Wazuh (manager + indexer + dashboard)
+#   VLAN 10 (servicios) dc01 .10         Windows Server 2022, Active Directory
+#                       web  .20         nginx + PHP (tienda del laboratorio)
+#                       db   .21         MariaDB
+#   (sin WIN11-01 ni Kali: ver docs/06-perfil-lite.md)
+#
+# RAM de VMs: siem 6 + DC01 3 + web 1 + db 1 + router 1 = 12 GB (+ Proxmox ~2 GB).
+# Solo para un equipo DEDICADO de 16 GB y SOLO para el itinerario básico:
+# no hay RAM para la Kali del avanzado.
+#
+# Las claves aparecen como __PLACEHOLDER__. NO las edites aquí: ejecuta
+#   scripts/preparar-config.sh
+# que genera rango/range-config-lite.local.yml (ignorado por git) con claves
+# aleatorias. Ese .local.yml es el que se carga en Ludus.
+# =============================================================================
+
+defaults:
+  ad_domain_admin: "labadmin"
+  ad_domain_admin_password: "__CLAVE_ADMIN_DOMINIO__"
+  ad_domain_user: "alumno"
+  ad_domain_user_password: "__CLAVE_USUARIO_DOMINIO__"
+  ad_domain_safe_mode_password: "__CLAVE_DSRM__"
+  timezone: "Europe/Madrid"
+
+# Valores compartidos por todos los roles (deben coincidir con las VMs de abajo).
+global_role_vars:
+  lab_siem_vlan: 20
+  lab_siem_octet: 10
+  lab_web_vlan: 10
+  lab_web_octet: 20
+  lab_db_vlan: 10
+  lab_db_octet: 21
+  lab_db_app_password: "__CLAVE_BD_APP__"
+  lab_wazuh_agent_version: "4.14.9"
+
+# El router de Ludus también ocupa RAM: se fija a lo mínimo para el perfil lite.
+router:
+  ram_gb: 1
+  cpus: 1
+
+ludus:
+  # ---------------------------------------------------------------------------
+  # VLAN 20 - SOC
+  # ---------------------------------------------------------------------------
+  - vm_name: "{{ range_id }}-siem"
+    hostname: "siem"
+    template: debian-12-x64-server-template
+    vlan: 20
+    ip_last_octet: 10
+    ram_gb: 6
+    cpus: 4
+    linux: true
+    # El SIEM NO vuelve a su estado anterior al salir del modo de pruebas: así
+    # conserva las alertas mientras las víctimas se restauran.
+    testing:
+      snapshot: false
+      block_internet: false
+    roles:
+      - lab_wazuh_server
+
+  # ---------------------------------------------------------------------------
+  # VLAN 10 - Servicios auditados
+  # ---------------------------------------------------------------------------
+  - vm_name: "{{ range_id }}-dc01"
+    hostname: "DC01"
+    template: win2022-server-x64-template
+    vlan: 10
+    ip_last_octet: 10
+    ram_gb: 3
+    cpus: 2
+    windows:
+      sysprep: false
+    domain:
+      fqdn: lab.local
+      role: primary-dc
+    roles:
+      - name: lab_wazuh_agent
+        depends_on:
+          - vm_name: "{{ range_id }}-siem"
+            role: lab_wazuh_server
+
+  - vm_name: "{{ range_id }}-web"
+    hostname: "web"
+    template: debian-12-x64-server-template
+    vlan: 10
+    ip_last_octet: 20
+    ram_gb: 1
+    cpus: 1
+    linux: true
+    roles:
+      - lab_web
+      - name: lab_wazuh_agent
+        depends_on:
+          - vm_name: "{{ range_id }}-siem"
+            role: lab_wazuh_server
+    role_vars:
+      lab_wazuh_localfiles:
+        - { location: /var/log/nginx/access.log, format: apache }
+        - { location: /var/log/nginx/error.log, format: apache }
+      lab_wazuh_fim_dirs:
+        - /var/www/tienda
+        - /etc/nginx
+
+  - vm_name: "{{ range_id }}-db"
+    hostname: "db"
+    template: debian-12-x64-server-template
+    vlan: 10
+    ip_last_octet: 21
+    ram_gb: 1
+    cpus: 1
+    linux: true
+    roles:
+      - lab_db
+      - name: lab_wazuh_agent
+        depends_on:
+          - vm_name: "{{ range_id }}-siem"
+            role: lab_wazuh_server
+    role_vars:
+      lab_wazuh_localfiles:
+        - { location: /var/log/mysql/mariadb-audit.log, format: syslog }
+      lab_wazuh_fim_dirs:
+        - /etc/mysql

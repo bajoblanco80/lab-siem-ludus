@@ -55,10 +55,17 @@ Itinerario básico ≈ 20 GB de RAM por alumno; avanzado ≈ 24 GB.
 | Duración orientativa | 1–2 sesiones (3–4 h cada una) | 3–4 sesiones |
 | Evaluación | [`rubrica-basico.md`](plantillas/rubrica-basico.md) | [`rubrica-avanzado.md`](plantillas/rubrica-avanzado.md) |
 
+### ¿Solo tienes 16 GB de RAM?
+Hay un **perfil lite** (`range-config-lite.yml`) que mantiene el SIEM, el Active
+Directory, el servidor web y la base de datos en ≈ 12 GB de VMs, pensado para un
+equipo **dedicado** de 16 GB y solo para el itinerario básico. Ver
+[docs/06-perfil-lite.md](docs/06-perfil-lite.md). No es adecuado dentro de un Mac
+ni para el itinerario avanzado.
+
 ## Cómo se organiza el repositorio
 
 ```
-docs/                      Guías: conceptos, docente, autoalojada, arquitectura, problemas
+docs/                      Guías: conceptos, docente, autoalojada, arquitectura, problemas, perfil lite
 rango/                     range-config-*.yml y los 4 roles de Ansible del laboratorio
 itinerario-basico/         Práctica guiada paso a paso
 itinerario-avanzado/       Práctica con ataques y detección
@@ -81,7 +88,7 @@ Con el CLI de `ludus` autenticado (detalles en las guías):
 
 ```bash
 scripts/instalar-roles.sh                       # registra los 4 roles en Ludus
-scripts/preparar-config.sh basico               # genera claves y rango/range-config-basico.local.yml
+scripts/preparar-config.sh basico               # genera claves y rango/range-config-basico.local.yml (o avanzado, o lite)
 ludus range config set -f rango/range-config-basico.local.yml
 ludus range deploy                              # 40-90 min la primera vez
 ludus range logs -f                             # sigue el despliegue
