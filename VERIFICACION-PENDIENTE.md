@@ -168,10 +168,14 @@ Comprobado en vivo:
 - [x] Detección de una plantilla a medio crear (`proxmox/pruebas/plantilla-estado.yml`) y orden de
       borrado de `destruir.yml`, plantilla la última (`proxmox/pruebas/destruir-seleccion.yml`).
 
+- [x] `destruir.yml -e confirmar=lab-servicios -e borrar_plantilla=si` real (52 s): borra las VM
+      3010-3013, la plantilla 9020 (la última), la imagen y la zona `labsrv` con sus VNets; el SDN
+      queda sin cambios pendientes y las VM ajenas del clúster quedan intactas.
+
 Pendiente (además de lo de abajo):
-- [ ] `destruir.yml` real, también con `-e borrar_plantilla=si` (borra la imagen con
-      `DELETE …/content/local%3Aimport%2F…`, ruta comprobada con un GET). Puede dejar reglas SNAT
-      huérfanas en el nodo (se quitan al reiniciarlo): comprobar con `iptables -t nat -S`.
+- [ ] Reglas SNAT huérfanas en el nodo tras destruir (misma causa que el SNAT que no se quita; son
+      inertes y desaparecen al reiniciarlo). Necesita un shell en el nodo:
+      `iptables -t nat -S | grep -E '10.20.20|22.44.77'`.
 - [ ] Convertir de verdad una plantilla que quedó a medias (la detección sí está probada).
 
 Pendiente:
