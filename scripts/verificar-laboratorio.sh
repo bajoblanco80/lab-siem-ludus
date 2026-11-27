@@ -12,7 +12,7 @@
 #                      salen como NO VERIFICABLE)
 #   WEB_IP             IP del servidor web (opcional)
 #
-# Uso: scripts/verificar-laboratorio.sh [--itinerario basico|avanzado|lite] [--informe estado.md]
+# Uso: scripts/verificar-laboratorio.sh [--itinerario basico|avanzado|lite|servicios] [--informe estado.md]
 set -uo pipefail
 
 itinerario="basico"
@@ -25,16 +25,19 @@ while [[ $# -gt 0 ]]; do
     *) echo "Argumento desconocido: $1" >&2; exit 2 ;;
   esac
 done
-case "$itinerario" in basico | avanzado | lite) ;; *) echo "--itinerario: basico|avanzado|lite" >&2; exit 2 ;; esac
+case "$itinerario" in basico | avanzado | lite | servicios) ;; *) echo "--itinerario: basico|avanzado|lite|servicios" >&2; exit 2 ;; esac
 : "${SIEM_IP:?Define SIEM_IP (IP de la VM del SIEM)}"
 API_USER="${WAZUH_API_USER:-wazuh}"
 API_PASS="${WAZUH_API_PASS:-}"
 WEB_IP="${WEB_IP:-}"
 
 # Agentes que deben aparecer activos. Los nombres son los hostnames del range-config.
-# El perfil lite no incluye el cliente Windows 11.
+# El perfil lite no incluye el cliente Windows 11. En «servicios» (Proxmox sin Ludus),
+# ns2 y cliente salen «pending» o «disconnected» hasta que el alumno configura el router en srv.
 if [[ "$itinerario" == "lite" ]]; then
   esperados=(DC01 web db)
+elif [[ "$itinerario" == "servicios" ]]; then
+  esperados=(srv ns2 cliente)
 else
   esperados=(DC01 web db WIN11-01)
 fi

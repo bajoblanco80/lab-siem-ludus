@@ -71,6 +71,9 @@
         {% for d in lab_wazuh_fim_dirs %}
         <directories realtime="yes" check_all="yes" report_changes="yes">{{ d }}</directories>
         {% endfor %}
+        {% for n in lab_wazuh_fim_nodiff %}
+        <nodiff type="sregex">{{ n }}</nodiff>
+        {% endfor %}
       </syscheck>
   when: lab_wazuh_fim_dirs | length > 0
   notify: Reiniciar agente Wazuh en Linux

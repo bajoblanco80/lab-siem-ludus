@@ -1,0 +1,79 @@
+---
+# Estado del SDN y guardas. Aplicar el SDN aplica TODO lo pendiente del clúster, así que se
+# aborta si hay cambios ajenos sin aplicar (zonas, VNets o subredes; salvo
+# -e aplicar_sdn_pendiente=si) o si una VNet con nuestros nombres es de otra zona.
+# Deja: lab_sdn_zonas, lab_sdn_vnets ([{vnet, zone, state}]), lab_sdn_cambios.
+# Un objeto sin aplicar puede traer sus datos dentro de «pending» y el estado aplicado,
+# un «state» nulo: de ahí el default de la zona y el rejectattr('state', 'none').
+
+- name: Zonas SDN (con cambios pendientes)
+  ansible.builtin.include_tasks: api.yml
+  vars:
+    api_metodo: GET
+    api_ruta: /cluster/sdn/zones?pending=1
+
+- name: Guardar las zonas
+  ansible.builtin.set_fact:
+    lab_sdn_zonas: "{{ api_resultado.json.data }}"
+    lab_sdn_vnets: []
+
+- name: VNets SDN (con cambios pendientes)
+  ansible.builtin.include_tasks: api.yml
+  vars:
+    api_metodo: GET
+    api_ruta: /cluster/sdn/vnets?pending=1
+
+- name: Normalizar las VNets (una VNet nueva trae la zona en «pending»; sin zona cuenta como ajena)
+  ansible.builtin.set_fact:
+    lab_sdn_vnets: >-
+      {{ lab_sdn_vnets + [{'vnet': item.vnet,
+                           'zone': item.zone | default((item.pending | default({}, true)).zone | default(''), true),
+                           'state': item.state | default(none)}] }}
+  loop: "{{ api_resultado.json.data }}"
+  loop_control:
+    label: "{{ item.vnet }}"
+
+- name: Ninguna VNet con los nombres del laboratorio pertenece a otra zona
+  vars:
+    lab_colision: "{{ lab_sdn_vnets | selectattr('vnet', 'in', pve_vnets | map(attribute='nombre') | list) | rejectattr('zone', 'equalto', pve_zona) | list }}"
+  ansible.builtin.assert:
+    that: lab_colision | length == 0
+    fail_msg: >-
+      Ya existen VNets con los nombres del laboratorio en otra zona:
+      {{ lab_colision | map(attribute='vnet') | zip(lab_colision | map(attribute='zone')) | map('join', ' en ') | join(', ') }}.
+      No se tocan: cambia los nombres de pve_vnets en group_vars/all.yml.
+    quiet: true
+
+- name: Subredes de las VNets ajenas (con cambios pendientes)
+  ansible.builtin.uri:
+    url: "{{ pve_api_url }}/cluster/sdn/vnets/{{ item.vnet }}/subnets?pending=1"
+    headers:
+      Authorization: "{{ pve_api_cabecera }}"
+    validate_certs: false
+  loop: "{{ lab_sdn_vnets | rejectattr('zone', 'equalto', pve_zona) | list }}"
+  register: lab_subredes_ajenas
+  no_log: true
+
+- name: Guardar los cambios ajenos y si hay cambios propios pendientes
+  vars:
+    lab_pendientes_zonas: "{{ lab_sdn_zonas | selectattr('state', 'defined') | rejectattr('state', 'none') }}"
+    lab_pendientes_vnets: "{{ lab_sdn_vnets | rejectattr('state', 'none') }}"
+    lab_pendientes_subredes: >-
+      {{ lab_subredes_ajenas.results | map(attribute='json') | map(attribute='data') | flatten
+         | selectattr('state', 'defined') | rejectattr('state', 'none') | map(attribute='subnet') | list }}
+  ansible.builtin.set_fact:
+    lab_sdn_ajenos: >-
+      {{ (lab_pendientes_zonas | rejectattr('zone', 'equalto', pve_zona) | map(attribute='zone') | list) +
+         (lab_pendientes_vnets | rejectattr('zone', 'equalto', pve_zona) | map(attribute='vnet') | list) +
+         lab_pendientes_subredes }}
+    lab_sdn_cambios: >-
+      {{ (lab_pendientes_zonas | selectattr('zone', 'equalto', pve_zona) | list | length > 0) or
+         (lab_pendientes_vnets | selectattr('zone', 'equalto', pve_zona) | list | length > 0) }}
+
+- name: No aplicar cambios SDN ajenos sin permiso
+  ansible.builtin.assert:
+    that: lab_sdn_ajenos | length == 0 or aplicar_sdn_pendiente | default('no') == 'si'
+    fail_msg: >-
+      Hay cambios SDN pendientes que no son del laboratorio: {{ lab_sdn_ajenos | join(', ') }}.
+      Aplicar el SDN también los aplicaría. Revísalos en Datacenter > SDN o repite con -e aplicar_sdn_pendiente=si.
+    quiet: true

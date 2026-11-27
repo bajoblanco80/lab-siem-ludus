@@ -1,0 +1,57 @@
+---
+# Despliega el itinerario «servicios» en Proxmox VE sin Ludus (ver docs/08-proxmox-nativo.md).
+# Uso, desde esta carpeta y con las credenciales en el entorno:
+#   ansible-playbook desplegar.yml
+- name: Infraestructura
+  ansible.builtin.import_playbook: infraestructura.yml
+
+- name: Esperar a que respondan todas las máquinas
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: SSH disponible (ns2 y cliente, saltando por srv)
+      ansible.builtin.wait_for_connection:
+        timeout: 300
+
+- name: Router temporal para instalar paquetes en testlab
+  ansible.builtin.import_playbook: router-temporal.yml
+  vars:
+    estado: "on"
+
+- name: SIEM
+  hosts: soc
+  become: true
+  roles:
+    - lab_wazuh_server
+
+- name: Webmin y agente Wazuh en los servidores y el cliente
+  hosts: servicios
+  become: true
+  roles:
+    - lab_webmin
+    - lab_wazuh_agent
+  tasks:
+    - name: Herramientas para las pruebas del cliente
+      ansible.builtin.apt:
+        name: [dnsutils, smbclient, ldap-utils, curl, nmap]
+        state: present
+      when: inventory_hostname == 'cliente'
+
+# El alumno empieza con srv sin reenvío: ns2 y cliente quedan sin salida (y sus agentes
+# desconectados) hasta que configure el router siguiendo el PDF.
+- name: Quitar el router temporal
+  ansible.builtin.import_playbook: router-temporal.yml
+  vars:
+    estado: "off"
+
+- name: Resumen
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  tasks:
+    - name: Dónde entrar
+      ansible.builtin.debug:
+        msg:
+          - "Wazuh:  https://{{ lab_siem_ip }}  (claves: ssh labadmin@{{ lab_siem_ip }} sudo cat /root/wazuh-passwords.txt)"
+          - "Webmin: https://22.44.77.250:10000  usuario root, clave en {{ playbook_dir }}/secretos/webmin.txt"
+          - "SSH:    ssh labadmin@22.44.77.250  ·  ns2/cliente: ssh -J labadmin@22.44.77.250 labadmin@10.20.30.249|5"

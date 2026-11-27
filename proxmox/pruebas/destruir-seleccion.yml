@@ -1,0 +1,25 @@
+---
+# Prueba sin API: qué borra destruir.yml y en qué orden (datos simulados).
+# Uso: ansible-playbook pruebas/destruir-seleccion.yml
+- name: Selección y orden de destruir.yml
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    borrar_plantilla: si
+    lab_recursos_destruir:
+      - { vmid: 9020, name: debian12-cloud, node: pve3, tags: lab-servicios, template: 1 }
+      - { vmid: 3010, name: siem, node: pve3, tags: lab-servicios }
+      - { vmid: 3013, name: cliente, node: pve3, tags: lab-servicios }
+      - { vmid: 3011, name: srv, node: pve3, tags: lab-servicios }
+      - { vmid: 3012, name: ns2, node: pve3 }                        # sin etiqueta: no se toca
+      - { vmid: 100, name: vm-ajena, node: pve1 }                     # ajena: no se toca
+      - { vmid: 3011, name: srv-otro, node: pve1, tags: lab-servicios } # otro nodo: no se toca
+  tasks:
+    - name: Selección
+      ansible.builtin.include_tasks: ../tareas/destruir-seleccion.yml
+
+    - name: Solo lo del laboratorio, clones antes que la plantilla (la plantilla no se borra con clones enlazados)
+      ansible.builtin.assert:
+        that: lab_borrar | map(attribute='vmid') | list == [3010, 3011, 3013, 9020]
+        fail_msg: "Orden obtenido: {{ lab_borrar | map(attribute='vmid') | list }}"

@@ -1,0 +1,22 @@
+---
+# Una VM del laboratorio (lab_vm, ver lab_vms en group_vars/all.yml): clon enlazado de la
+# plantilla si falta y, si aún no está configurada (sin ipconfig0), CPU/RAM, cloud-init,
+# una tarjeta por red y disco. Así una ejecución interrumpida se completa al repetir.
+
+- name: "Clonar la plantilla como {{ lab_vm.nombre }}"
+  ansible.builtin.include_tasks: api.yml
+  vars:
+    api_metodo: POST
+    api_ruta: "/nodes/{{ pve_nodo }}/qemu/{{ pve_plantilla_vmid }}/clone"
+    api_datos: { newid: "{{ lab_vm.vmid }}", name: "{{ lab_vm.nombre }}", full: 0 }
+  when: lab_vm.vmid not in (lab_recursos | map(attribute='vmid') | list)
+
+- name: "Configuración actual de {{ lab_vm.nombre }}"
+  ansible.builtin.include_tasks: api.yml
+  vars:
+    api_metodo: GET
+    api_ruta: "/nodes/{{ pve_nodo }}/qemu/{{ lab_vm.vmid }}/config"
+
+- name: "Configurar {{ lab_vm.nombre }}"
+  ansible.builtin.include_tasks: vm-config.yml
+  when: "'ipconfig0' not in api_resultado.json.data"

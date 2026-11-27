@@ -1,0 +1,37 @@
+---
+# Configuración de una VM recién clonada (lab_vm): CPU/RAM, cloud-init, redes y disco.
+
+- name: "CPU, RAM y cloud-init de {{ lab_vm.nombre }}"
+  ansible.builtin.include_tasks: api.yml
+  vars:
+    api_metodo: PUT
+    api_ruta: "/nodes/{{ pve_nodo }}/qemu/{{ lab_vm.vmid }}/config"
+    api_datos:
+      memory: "{{ lab_vm.ram_mb }}"
+      cores: "{{ lab_vm.cores }}"
+      ciuser: labadmin
+      # Proxmox exige sshkeys url-codificada solo con caracteres no reservados: urlencode deja '/' sin codificar.
+      sshkeys: "{{ lookup('ansible.builtin.file', lab_ssh_clave_publica_fichero) | urlencode | replace('/', '%2F') }}"
+      nameserver: "{{ lab_dns }}"
+      tags: "{{ pve_etiqueta }}"
+
+- name: "Tarjetas de red de {{ lab_vm.nombre }}"
+  ansible.builtin.include_tasks: api.yml
+  vars:
+    api_metodo: PUT
+    api_ruta: "/nodes/{{ pve_nodo }}/qemu/{{ lab_vm.vmid }}/config"
+    api_datos: >-
+      {{ {('net' ~ lab_nic_i): 'virtio,bridge=' ~ lab_nic.vnet,
+          ('ipconfig' ~ lab_nic_i): 'ip=' ~ lab_nic.ip ~ ((',gw=' ~ lab_nic.gw) if lab_nic.gw is defined else '')} }}
+  loop: "{{ lab_vm.nics }}"
+  loop_control:
+    loop_var: lab_nic
+    index_var: lab_nic_i
+    label: "net{{ lab_nic_i }} -> {{ lab_nic.vnet }}"
+
+- name: "Ampliar el disco de {{ lab_vm.nombre }}"
+  ansible.builtin.include_tasks: api.yml
+  vars:
+    api_metodo: PUT
+    api_ruta: "/nodes/{{ pve_nodo }}/qemu/{{ lab_vm.vmid }}/resize"
+    api_datos: { disk: scsi0, size: "{{ lab_vm.disco_gb }}G" }

@@ -6,6 +6,9 @@ alumno. Cada alumno recibe su rango aislado y su VPN WireGuard.
 > Antes de la primera clase completa [VERIFICACION-PENDIENTE.md](../VERIFICACION-PENDIENTE.md):
 > este repositorio aún no se ha desplegado en un Ludus real.
 
+> **Itinerario servicios:** no usa Ludus. Se despliega con Ansible contra la API de Proxmox VE 9
+> (≈ 12 GB de VMs, un laboratorio por clúster). Ver [08-proxmox-nativo.md](08-proxmox-nativo.md).
+
 ## 1. Requisitos del servidor
 
 Según la documentación de Ludus (mínimos para el servidor):

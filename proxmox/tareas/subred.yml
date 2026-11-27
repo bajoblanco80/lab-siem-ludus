@@ -1,0 +1,29 @@
+---
+# Una subred (lab_subred: {nombre, subred, gateway, snat}). Crea si falta y marca
+# lab_sdn_cambios si la crea o si tiene cambios sin aplicar.
+
+- name: "Subredes de {{ lab_subred.nombre }}"
+  ansible.builtin.include_tasks: api.yml
+  vars:
+    api_metodo: GET
+    api_ruta: "/cluster/sdn/vnets/{{ lab_subred.nombre }}/subnets?pending=1"
+
+- name: "Ver si existe o tiene cambios pendientes la subred {{ lab_subred.subred }}"
+  vars:
+    lab_id_subred: "{{ pve_zona }}-{{ lab_subred.subred | replace('/', '-') }}"
+  ansible.builtin.set_fact:
+    lab_subred_existe: "{{ api_resultado.json.data | selectattr('subnet', 'equalto', lab_id_subred) | list | length > 0 }}"
+    lab_sdn_cambios: "{{ lab_sdn_cambios | bool or (api_resultado.json.data | selectattr('state', 'defined') | list | length > 0) }}"
+
+- name: "Crear la subred {{ lab_subred.subred }}"
+  ansible.builtin.include_tasks: api.yml
+  vars:
+    api_metodo: POST
+    api_ruta: "/cluster/sdn/vnets/{{ lab_subred.nombre }}/subnets"
+    api_datos: { subnet: "{{ lab_subred.subred }}", type: subnet, gateway: "{{ lab_subred.gateway }}", snat: "{{ lab_subred.snat | int }}" }
+  when: not lab_subred_existe | bool
+
+- name: Marcar cambios si se creó la subred
+  ansible.builtin.set_fact:
+    lab_sdn_cambios: true
+  when: not lab_subred_existe | bool

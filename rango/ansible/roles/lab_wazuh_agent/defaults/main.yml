@@ -15,5 +15,8 @@ lab_siem_ip: ""
 # Opcional, por VM (se pasan con role_vars en el range-config):
 #   lab_wazuh_localfiles: [{ location: /var/log/nginx/access.log, format: apache }]
 #   lab_wazuh_fim_dirs: ["/var/www", "/etc/nginx"]
+#   lab_wazuh_fim_nodiff: ["^/etc/nslcd.conf$", ".key$"]   (sregex: sin diff, para no
+#     llevar claves al panel; el FIM sigue avisando del cambio)
 lab_wazuh_localfiles: []
 lab_wazuh_fim_dirs: []
+lab_wazuh_fim_nodiff: []

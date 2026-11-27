@@ -1,0 +1,69 @@
+---
+# Instala Webmin desde su repositorio apt OFICIAL (sin setup-repos.sh: no se
+# ejecuta ningún script de terceros). Los servicios los configura el alumno.
+# Referencia: https://webmin.com/download/
+
+- name: Exigir una clave para root de Webmin
+  ansible.builtin.assert:
+    that: lab_webmin_root_password | length >= 16
+    fail_msg: "lab_webmin_root_password vacía o corta: la genera proxmox/group_vars/all.yml"
+
+- name: Requisitos
+  ansible.builtin.apt:
+    name:
+      - gnupg
+      - curl
+    state: present
+    update_cache: true
+
+- name: Descargar la clave GPG oficial de Webmin
+  ansible.builtin.get_url:
+    url: https://download.webmin.com/developers-key.asc
+    dest: /tmp/webmin-developers-key.asc
+    mode: "0644"
+
+- name: Importar la clave en un anillo dedicado
+  ansible.builtin.shell: >
+    gpg --dearmor < /tmp/webmin-developers-key.asc > /usr/share/keyrings/webmin-developers.gpg &&
+    chmod 644 /usr/share/keyrings/webmin-developers.gpg
+  args:
+    executable: /bin/bash
+    creates: /usr/share/keyrings/webmin-developers.gpg
+
+- name: Añadir el repositorio oficial
+  ansible.builtin.copy:
+    dest: /etc/apt/sources.list.d/webmin.list
+    content: "deb [signed-by=/usr/share/keyrings/webmin-developers.gpg] https://download.webmin.com/download/newkey/repository stable contrib\n"
+    mode: "0644"
+
+- name: Instalar Webmin
+  ansible.builtin.apt:
+    name: webmin
+    state: present
+    update_cache: true
+
+- name: Fijar la clave de root de Webmin (herramienta oficial changepass.pl)
+  ansible.builtin.shell: >
+    /usr/share/webmin/changepass.pl /etc/webmin root '{{ lab_webmin_root_password }}' &&
+    touch /etc/webmin/.lab-clave-fijada
+  args:
+    executable: /bin/bash
+    creates: /etc/webmin/.lab-clave-fijada
+  no_log: true
+  notify: Reiniciar Webmin
+
+# Para el ejercicio de regla propia: Wazuh no trae decoder de Webmin. Con syslog=1 los
+# inicios de sesión van a syslog (facility auth: Debian los deja en /var/log/auth.log y
+# en el journal, que es lo que lee el agente de Wazuh 4.14).
+- name: Registrar inicios de sesión y fallos en syslog
+  ansible.builtin.lineinfile:
+    path: /etc/webmin/miniserv.conf
+    regexp: "^syslog="
+    line: "syslog=1"
+  notify: Reiniciar Webmin
+
+- name: Webmin activo y con arranque automático
+  ansible.builtin.systemd:
+    name: webmin
+    state: started
+    enabled: true

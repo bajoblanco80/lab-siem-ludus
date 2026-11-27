@@ -1,0 +1,57 @@
+---
+# Zona, VNets y subredes del laboratorio (crea lo que falte y aplica).
+
+- name: Estado del SDN y guarda de cambios ajenos
+  ansible.builtin.include_tasks: sdn-estado.yml
+
+- name: Crear la zona del laboratorio
+  ansible.builtin.include_tasks: api.yml
+  vars:
+    api_metodo: POST
+    api_ruta: /cluster/sdn/zones
+    api_datos: { zone: "{{ pve_zona }}", type: simple, ipam: pve, nodes: "{{ pve_nodo }}" }
+  when: lab_sdn_zonas | selectattr('zone', 'equalto', pve_zona) | list | length == 0
+
+- name: Crear las VNets que falten
+  ansible.builtin.include_tasks: api.yml
+  vars:
+    api_metodo: POST
+    api_ruta: /cluster/sdn/vnets
+    api_datos: { vnet: "{{ item.nombre }}", zone: "{{ pve_zona }}" }
+  loop: "{{ pve_vnets }}"
+  loop_control:
+    label: "{{ item.nombre }}"
+  when: lab_sdn_vnets | selectattr('vnet', 'equalto', item.nombre) | list | length == 0
+
+- name: Marcar cambios si se creó la zona o alguna VNet
+  ansible.builtin.set_fact:
+    lab_sdn_cambios: true
+  when: >-
+    lab_sdn_zonas | selectattr('zone', 'equalto', pve_zona) | list | length == 0 or
+    (pve_vnets | map(attribute='nombre') | difference(lab_sdn_vnets | map(attribute='vnet'))) | length > 0
+
+- name: Subredes
+  ansible.builtin.include_tasks: subred.yml
+  loop: "{{ pve_vnets | selectattr('subred', 'defined') | list }}"
+  loop_control:
+    loop_var: lab_subred
+    label: "{{ lab_subred.nombre }}"
+
+- name: Aplicar el SDN
+  ansible.builtin.include_tasks: api.yml
+  vars:
+    api_metodo: PUT
+    api_ruta: /cluster/sdn
+  when: lab_sdn_cambios | bool
+
+- name: Estado de las zonas en el nodo
+  ansible.builtin.include_tasks: api.yml
+  vars:
+    api_metodo: GET
+    api_ruta: "/nodes/{{ pve_nodo }}/sdn/zones"
+
+- name: La zona del laboratorio está disponible en el nodo
+  ansible.builtin.assert:
+    that: api_resultado.json.data | selectattr('zone', 'equalto', pve_zona) | selectattr('status', 'equalto', 'available') | list | length == 1
+    fail_msg: "La zona {{ pve_zona }} no está 'available' en {{ pve_nodo }}: {{ api_resultado.json.data | selectattr('zone', 'equalto', pve_zona) | list }}"
+    quiet: true

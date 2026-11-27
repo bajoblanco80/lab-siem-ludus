@@ -1,0 +1,99 @@
+---
+# Comprobaciones antes de crear nada. Deja en lab_recursos las VM del clúster.
+
+- name: Credenciales de la API cargadas en el entorno
+  ansible.builtin.assert:
+    that:
+      - lookup('ansible.builtin.env', 'PROXMOX_HOST') | length > 0
+      - lookup('ansible.builtin.env', 'PROXMOX_TOKEN_ID') | length > 0
+      - lookup('ansible.builtin.env', 'PROXMOX_TOKEN_SECRET') | length > 0
+    fail_msg: "Carga las credenciales antes: set -a; . ~/.proxmox-credentials; set +a (ver docs/08-proxmox-nativo.md)"
+    quiet: true
+
+- name: Versión de Proxmox
+  ansible.builtin.include_tasks: api.yml
+  vars:
+    api_metodo: GET
+    api_ruta: /version
+
+- name: Exigir Proxmox VE 9
+  ansible.builtin.assert:
+    that: api_resultado.json.data.version is version('9.0', '>=')
+    fail_msg: "Hace falta Proxmox VE 9.x; este es {{ api_resultado.json.data.version }}"
+    quiet: true
+
+- name: Estado del nodo
+  ansible.builtin.include_tasks: api.yml
+  vars:
+    api_metodo: GET
+    api_ruta: "/nodes/{{ pve_nodo }}/status"
+
+- name: Guardar la RAM libre del nodo
+  ansible.builtin.set_fact:
+    lab_ram_libre_mb: "{{ (api_resultado.json.data.memory.free / 1048576) | int }}"
+
+- name: VM y contenedores del clúster
+  ansible.builtin.include_tasks: api.yml
+  vars:
+    api_metodo: GET
+    api_ruta: /cluster/resources?type=vm
+
+- name: Guardar las VM del clúster y si la plantilla está terminada (existe Y es plantilla)
+  ansible.builtin.set_fact:
+    lab_recursos: "{{ api_resultado.json.data }}"
+    lab_plantilla_lista: >-
+      {{ api_resultado.json.data | selectattr('vmid', 'equalto', pve_plantilla_vmid)
+         | selectattr('template', 'defined') | selectattr('template', 'equalto', 1) | list | length > 0 }}
+
+- name: Los VMID del laboratorio están libres o son del laboratorio
+  ansible.builtin.assert:
+    that: >-
+      lab_recursos | selectattr('vmid', 'equalto', item) | rejectattr('tags', 'defined') | list | length == 0 and
+      lab_recursos | selectattr('vmid', 'equalto', item) | selectattr('tags', 'defined')
+                   | rejectattr('tags', 'search', pve_etiqueta) | list | length == 0
+    fail_msg: >-
+      El VMID {{ item }} ya lo usa '{{ (lab_recursos | selectattr('vmid', 'equalto', item) | first).name | default('?') }}'
+      sin la etiqueta {{ pve_etiqueta }}. No se toca: cambia los VMID en group_vars/all.yml.
+    quiet: true
+  loop: "{{ lab_vms | map(attribute='vmid') | list + [pve_plantilla_vmid] }}"
+
+- name: Almacenamientos del nodo
+  ansible.builtin.include_tasks: api.yml
+  vars:
+    api_metodo: GET
+    api_ruta: "/nodes/{{ pve_nodo }}/storage"
+
+- name: Almacenamientos activos y con contenido import
+  ansible.builtin.assert:
+    that:
+      - api_resultado.json.data | selectattr('storage', 'equalto', pve_storage_vm) | selectattr('active', 'equalto', 1) | list | length == 1
+      - api_resultado.json.data | selectattr('storage', 'equalto', pve_storage_imagen) | selectattr('content', 'search', 'import') | list | length == 1
+    fail_msg: "'{{ pve_storage_vm }}' debe estar activo y '{{ pve_storage_imagen }}' admitir contenido 'import' (Datacenter > Storage)"
+    quiet: true
+
+- name: RAM libre suficiente para las VM que faltan
+  vars:
+    lab_vmid_existentes: "{{ lab_recursos | map(attribute='vmid') | list }}"
+    lab_ram_necesaria: "{{ lab_vms | rejectattr('vmid', 'in', lab_vmid_existentes) | map(attribute='ram_mb') | sum }}"
+  ansible.builtin.assert:
+    that: lab_ram_libre_mb | int >= lab_ram_necesaria | int
+    fail_msg: "{{ pve_nodo }} tiene {{ lab_ram_libre_mb }} MB libres y las VM nuevas necesitan {{ lab_ram_necesaria }} MB"
+    quiet: true
+
+- name: Rutas desde este equipo hasta las redes del laboratorio
+  ansible.builtin.command: "ip -o route get {{ item }}"
+  loop: [22.44.77.250, 10.20.20.10]
+  register: lab_rutas
+  changed_when: false
+
+- name: Las rutas pasan por el nodo
+  ansible.builtin.assert:
+    that: "'via ' ~ pve_nodo_ip ~ ' ' in item.stdout"
+    fail_msg: >-
+      Este equipo no llega a {{ item.item }} a través de {{ pve_nodo }}. Añade las rutas y repite:
+      sudo ip route add 22.44.77.0/24 via {{ pve_nodo_ip }} &&
+      sudo ip route add 10.20.20.0/24 via {{ pve_nodo_ip }}
+    quiet: true
+  loop: "{{ lab_rutas.results }}"
+  loop_control:
+    label: "{{ item.item }}"

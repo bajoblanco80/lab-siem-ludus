@@ -1,0 +1,86 @@
+---
+# Modo de pruebas: corta (activar) o devuelve (desactivar) la salida a Internet del laboratorio.
+# Quita la ruta por defecto de srv (único camino de testlab hacia fuera) y de siem, dejando
+# rutas explícitas al resto del laboratorio y a la LAN de gestión. Sin instantáneas: no se
+# pierde lo configurado. Deja constancia en las notas de las VM en Proxmox.
+# (Quitar el SNAT de las subredes NO sirve: la regla iptables sigue viva en el host.)
+# shortcut: un alumno con sudo en srv puede volver a poner la ruta y reiniciar la VM la devuelve;
+#   protege de errores, no de quien quiera saltárselo. Para forzarlo desde el host haría falta
+#   el cortafuegos de Proxmox.
+# Uso: ansible-playbook modo-pruebas.yml -e estado=activar|desactivar
+- name: Validar el estado pedido
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  tasks:
+    - name: Estado válido
+      ansible.builtin.assert:
+        that: estado in ['activar', 'desactivar']
+        fail_msg: "Usa -e estado=activar o -e estado=desactivar"
+        quiet: true
+
+- name: Rutas de srv y siem
+  hosts: srv:siem
+  become: true
+  gather_facts: false
+  vars:
+    lab_gw: "{{ (lab_vms | selectattr('nombre', 'equalto', inventory_hostname) | first).nics[0].gw }}"
+    lab_rutas: "{{ lab_rutas_modo_pruebas + [pve_lan] }}"
+  tasks:
+    - name: Rutas explícitas al laboratorio y a la LAN (antes de quitar la ruta por defecto)
+      ansible.builtin.command: "ip route replace {{ item }} via {{ lab_gw }}"
+      loop: "{{ lab_rutas }}"
+      changed_when: true
+      when: estado == 'activar'
+
+    - name: Quitar TODAS las rutas por defecto (puede haber más de una, con otra métrica o pasarela)
+      ansible.builtin.command: ip -4 route flush exact 0.0.0.0/0
+      changed_when: true
+      when: estado == 'activar'
+
+    # Es una medida de seguridad: se comprueba, no se supone.
+    - name: Comprobar que no queda ninguna ruta por defecto
+      ansible.builtin.command: ip -4 route show default
+      register: lab_por_defecto
+      changed_when: false
+      failed_when: lab_por_defecto.stdout | length > 0
+      when: estado == 'activar'
+
+    - name: Devolver la ruta por defecto
+      ansible.builtin.command: "ip route replace default via {{ lab_gw }}"
+      changed_when: true
+      when: estado == 'desactivar'
+
+    - name: Quitar las rutas explícitas
+      ansible.builtin.command: "ip route del {{ item }} via {{ lab_gw }}"
+      loop: "{{ lab_rutas }}"
+      register: lab_ruta
+      changed_when: lab_ruta.rc == 0
+      failed_when: lab_ruta.rc not in [0, 2]
+      when: estado == 'desactivar'
+
+- name: Constancia en las notas de las VM
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    lab_nota: >-
+      {{ ('**MODO DE PRUEBAS ACTIVO** desde ' ~ now(fmt='%Y-%m-%d %H:%M') ~ ': srv y siem sin ruta por defecto
+      (solo laboratorio y LAN). Se deshace con `modo-pruebas.yml -e estado=desactivar`, al reiniciar la VM
+      o con `ip route add default` como root.')
+         if estado == 'activar' else
+         ('Modo de pruebas desactivado el ' ~ now(fmt='%Y-%m-%d %H:%M') ~ ': hay salida a Internet.') }}
+  tasks:
+    - name: Nota de srv y siem
+      ansible.builtin.include_tasks: tareas/api.yml
+      vars:
+        api_metodo: PUT
+        api_ruta: "/nodes/{{ pve_nodo }}/qemu/{{ item.vmid }}/config"
+        api_datos: { description: "{{ lab_nota }}" }
+      loop: "{{ lab_vms | selectattr('nombre', 'in', ['srv', 'siem']) | list }}"
+      loop_control:
+        label: "{{ item.nombre }}"
+
+    - name: Estado
+      ansible.builtin.debug:
+        msg: "Modo de pruebas {{ 'ACTIVO: el laboratorio no sale a Internet' if estado == 'activar' else 'DESACTIVADO: hay salida a Internet' }}"

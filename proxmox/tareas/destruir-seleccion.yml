@@ -1,0 +1,14 @@
+---
+# Qué VM borra destruir.yml, en orden. Entrada: lab_recursos_destruir (VM del clúster).
+# Solo VMID previstos + etiqueta del laboratorio + nodo. Deja lab_borrar.
+- name: Elegir solo VM del laboratorio (VMID previsto, etiqueta y nodo)
+  vars:
+    lab_vmids: "{{ lab_vms | map(attribute='vmid') | list + ([pve_plantilla_vmid] if borrar_plantilla | default('no') == 'si' else []) }}"
+    lab_del_lab: >-
+      {{ lab_recursos_destruir | selectattr('vmid', 'in', lab_vmids) | selectattr('tags', 'defined')
+         | selectattr('tags', 'search', pve_etiqueta) | selectattr('node', 'equalto', pve_nodo) | list }}
+  # La plantilla, siempre la última: Proxmox no la borra mientras tenga clones enlazados.
+  ansible.builtin.set_fact:
+    lab_borrar: >-
+      {{ (lab_del_lab | rejectattr('vmid', 'equalto', pve_plantilla_vmid) | sort(attribute='vmid') | list) +
+         (lab_del_lab | selectattr('vmid', 'equalto', pve_plantilla_vmid) | list) }}

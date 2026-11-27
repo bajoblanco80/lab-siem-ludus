@@ -1,0 +1,10 @@
+---
+# Prueba de sintaxis: carga los roles Linux del itinerario «servicios».
+# Uso (desde proxmox/): ansible-playbook -i localhost, pruebas/sintaxis.yml --syntax-check
+- name: Roles del itinerario servicios
+  hosts: localhost
+  gather_facts: false
+  roles:
+    - lab_wazuh_server
+    - lab_wazuh_agent
+    - lab_webmin

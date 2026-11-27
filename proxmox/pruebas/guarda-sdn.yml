@@ -1,0 +1,12 @@
+---
+# Prueba de la guarda SDN (solo lectura de la API, no aplica nada).
+# Uso (desde proxmox/, con credenciales): ansible-playbook pruebas/guarda-sdn.yml [-e pve_zona=otra]
+# Con -e pve_zona=otra, los objetos del laboratorio cuentan como ajenos: sirve para probar la
+# guarda sin crear objetos ajenos en el clúster.
+- name: Guarda SDN
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  tasks:
+    - name: Estado del SDN y guarda de cambios ajenos
+      ansible.builtin.include_tasks: ../tareas/sdn-estado.yml

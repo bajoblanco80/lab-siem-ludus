@@ -1,0 +1,41 @@
+---
+# Máquinas del itinerario «servicios». Las IP las pone cloud-init (group_vars/all.yml).
+# ns2 y cliente viven en la red aislada testlab: se llega a ellas saltando por srv.
+all:
+  vars:
+    ansible_user: labadmin
+    ansible_ssh_common_args: "-o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no"
+  children:
+    soc:
+      hosts:
+        siem:
+          ansible_host: 10.20.20.10
+          # Modo de pruebas: redes del laboratorio que siguen enrutadas sin ruta por defecto.
+          lab_rutas_modo_pruebas: [22.44.77.0/24]
+    servicios:
+      hosts:
+        srv:
+          ansible_host: 22.44.77.250
+          lab_rutas_modo_pruebas: [10.20.20.0/24]
+          lab_wazuh_localfiles:
+            - { location: /var/log/apache2/access.log, format: apache }
+            - { location: /var/log/apache2/error.log, format: apache }
+          lab_wazuh_fim_dirs: [/etc/bind, /etc/dhcp, /etc/samba, /etc/apache2, /etc/ldap, /etc/webmin, /etc/iptables]
+          # Sin diff en ficheros con claves o hashes: el cambio se avisa, el contenido no viaja al SIEM.
+          lab_wazuh_fim_nodiff: ["^/etc/webmin/miniserv.users$", ".key$", "^/etc/ldap/slapd.d/"]
+        ns2:
+          ansible_host: 10.20.30.249
+          lab_wazuh_fim_dirs: [/etc/bind, /etc/webmin]
+          lab_wazuh_fim_nodiff: ["^/etc/webmin/miniserv.users$", ".key$"]
+        cliente:
+          ansible_host: 10.20.30.5
+          lab_wazuh_fim_dirs: [/etc/nsswitch.conf, /etc/pam.d, /etc/nslcd.conf]
+          lab_wazuh_fim_nodiff: ["^/etc/nslcd.conf$"]
+    testlab:
+      vars:
+        ansible_ssh_common_args: >-
+          -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no
+          -o ProxyCommand="ssh -W %h:%p -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no labadmin@22.44.77.250"
+      hosts:
+        ns2:
+        cliente:

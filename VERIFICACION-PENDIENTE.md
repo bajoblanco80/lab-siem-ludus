@@ -125,6 +125,63 @@ Ejecuta cada ataque y anota el `rule.id` que salta en tu versión. Si difiere, c
 - [ ] Debian 13 es compatible con **todas** las plantillas usadas aquí
       (`ludus templates build`), no solo con la instalación del servidor.
 
+### I. Itinerario servicios en Proxmox VE sin Ludus (`proxmox/`, `docs/08-proxmox-nativo.md`)
+
+**Desplegado en un Proxmox VE 9.2.2 real** (clúster de 3 nodos, nodo `pve3`, 2026-11-27).
+
+Comprobado en vivo:
+- [x] La API acepta todos los endpoints y parámetros usados (`download-url` con `content=import`
+      y SHA512, `import-from`, `ciupgrade`, clon enlazado, `resize`, SDN zonas/VNets/subredes y
+      `PUT /cluster/sdn`).
+- [x] Zona `labsrv` `available` en el nodo; plantilla 9020 y VM 3010-3013 creadas, etiquetadas y en marcha.
+- [x] Debian 12 cloud: `eth0`/`eth1`, netplan + systemd-networkd, IP fijas por cloud-init,
+      `ns2` y `cliente` sin ruta por defecto, acceso SSH directo (`siem`, `srv`) y saltando por `srv`.
+- [x] Guardas: VMID ocupado por una VM ajena, cambios SDN ajenos pendientes, falta de rutas,
+      `destruir.yml` sin `confirmar` y `modo-pruebas.yml` con estado inválido abortan sin tocar nada.
+- [x] Un despliegue interrumpido (VM clonada sin configurar) se completa al repetir.
+- [x] Despliegue completo en verde (≈ 20 min; asistente de Wazuh 7 min) y repetición idempotente
+      (41 s, sin clones, sin reconfigurar VM, sin reaplicar SDN ni reinstalar Wazuh).
+- [x] Wazuh 4.14.11 (gestor) con agentes 4.14.9; Webmin 2.670 en `srv`, `ns2` y `cliente`; clave
+      de Webmin en `proxmox/secretos/webmin.txt` (permisos 600); login correcto y fallido.
+- [x] Tras el despliegue `srv` no reenvía (`ip_forward=0`, sin MASQUERADE), `srv` `active`,
+      `ns2`/`cliente` `pending`; con el router temporal pasan a `active` en ≈ 20 s.
+- [x] El agente de Wazuh 4.14 en Debian 12 lee **journald** (no `/var/log/syslog` ni `auth.log`).
+      Webmin registra los fallos en `auth.log` («webmin[…]: Invalid login as root from …»).
+- [x] `wazuh-logtest`: esa línea se decodifica como `barracuda-svf-admin` y no salta ninguna regla;
+      la regla de la guía (`program_name ^webmin$` + `Invalid login as`) genera la alerta 100200.
+- [x] `scripts/verificar-laboratorio.sh --itinerario servicios` contra el Wazuh real.
+- [x] RAM: el nodo usa 13,4 GB con el laboratorio en marcha.
+- [x] **Quitar el SNAT de una subred y aplicar el SDN NO corta la salida**: la regla de `iptables`
+      sigue en el nodo tras recargar la red (con `snat=0`, `siem` seguía llegando a Internet y a
+      `pve1`, que no tiene ruta de vuelta). Por eso el modo de pruebas usa rutas dentro de las VM.
+- [x] Modo de pruebas por rutas: activo → `siem` y `cliente` (con router) no salen; `siem` llega a
+      `srv`, el agente de `srv` sigue `active` y desde el equipo se entra a Webmin y Wazuh;
+      desactivado → todo vuelve; la nota de la VM refleja el estado.
+
+- [x] Guarda SDN (`proxmox/pruebas/guarda-sdn.yml`): abortan con mensaje una VNet nueva sin aplicar
+      (PVE pone su zona dentro de `pending`), una subred ajena con cambios pendientes y VNets con
+      los nombres del laboratorio en otra zona.
+- [x] Modo de pruebas con dos rutas por defecto en `siem`: las quita todas y comprueba que no queda
+      ninguna (antes decía «ACTIVO» con salida a Internet).
+- [x] FIM con `nodiff`: cambiar un `*.key` en `/etc/webmin` avisa (regla 550) sin enviar el
+      contenido al SIEM («Diff truncated due to 'nodiff'»).
+- [x] Detección de una plantilla a medio crear (`proxmox/pruebas/plantilla-estado.yml`) y orden de
+      borrado de `destruir.yml`, plantilla la última (`proxmox/pruebas/destruir-seleccion.yml`).
+
+Pendiente (además de lo de abajo):
+- [ ] `destruir.yml` real, también con `-e borrar_plantilla=si` (borra la imagen con
+      `DELETE …/content/local%3Aimport%2F…`, ruta comprobada con un GET). Puede dejar reglas SNAT
+      huérfanas en el nodo (se quitan al reiniciarlo): comprobar con `iptables -t nat -S`.
+- [ ] Convertir de verdad una plantilla que quedó a medias (la detección sí está probada).
+
+Pendiente:
+- [ ] Permisos mínimos del token (probado solo con `Administrator` en `/`).
+- [ ] IDs de regla de la Parte 6 de la práctica en una auditoría real del alumno (named 12102/12145,
+      slapd 2509, smbd 13102/13104, Apache 31103/31104, sshd 5760/5716, FIM 550).
+- [ ] El decoder `iptables` de Wazuh con el prefijo `DROP ` de la Parte 3.1 (`wazuh-logtest`).
+- [ ] Los servicios del PDF montados con Webmin sobre Debian 12 (el PDF es de Ubuntu 24.04).
+- [ ] Varios laboratorios a la vez (no soportado: subredes fijas).
+
 ## Cosas que NO prometemos
 - Kerberoasting, DCSync y otros ataques de identidad (exigen SPN, auditoría de Kerberos y Sysmon).
 - Detección de tráfico de red (no hay IDS).
