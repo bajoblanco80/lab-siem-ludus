@@ -1,0 +1,48 @@
+---
+# Una llamada a la API de Proxmox.
+# Entradas: api_metodo, api_ruta, api_datos (dict, opcional).
+# Salida:   api_resultado (respuesta de uri; los datos en api_resultado.json.data).
+# Si la API devuelve una tarea (UPID), espera a que termine y falla si no acaba en OK.
+# no_log: la cabecera lleva el token. Los errores se muestran aparte, sin el token.
+
+- name: "API {{ api_metodo ~ ' ' ~ api_ruta }}"
+  ansible.builtin.uri:
+    url: "{{ pve_api_url }}{{ api_ruta }}"
+    method: "{{ api_metodo }}"
+    headers:
+      Authorization: "{{ pve_api_cabecera }}"
+    body_format: form-urlencoded
+    body: "{{ api_datos | default(omit) }}"
+    validate_certs: false
+    return_content: true
+    timeout: 120
+    status_code: [200, 400, 401, 403, 404, 500, 501, 595, 596]
+  register: api_resultado
+  no_log: true
+
+- name: "Error de la API en {{ api_ruta }}"
+  ansible.builtin.fail:
+    msg: >-
+      {{ api_metodo }} {{ api_ruta }} -> HTTP {{ api_resultado.status }}:
+      {{ (api_resultado.json | default({})).errors | default((api_resultado.json | default({})).message | default(api_resultado.msg | default(''))) }}
+  when: api_resultado.status != 200
+
+- name: Esperar a la tarea de Proxmox
+  ansible.builtin.uri:
+    url: "{{ pve_api_url }}/nodes/{{ api_resultado.json.data.split(':')[1] }}/tasks/{{ api_resultado.json.data | urlencode }}/status"
+    headers:
+      Authorization: "{{ pve_api_cabecera }}"
+    validate_certs: false
+  register: api_tarea
+  until: api_tarea.json.data.status == 'stopped'
+  retries: 360
+  delay: 5
+  no_log: true
+  when: api_resultado.json.data is string and api_resultado.json.data.startswith('UPID:')
+
+- name: La tarea de Proxmox terminó bien
+  ansible.builtin.assert:
+    that: api_tarea.json.data.exitstatus == 'OK'
+    fail_msg: "{{ api_metodo }} {{ api_ruta }}: la tarea acabó con '{{ api_tarea.json.data.exitstatus }}' (ver Tareas en la interfaz de Proxmox)"
+    quiet: true
+  when: api_resultado.json.data is string and api_resultado.json.data.startswith('UPID:')

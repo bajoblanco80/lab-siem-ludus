@@ -1,0 +1,15 @@
+---
+# Prueba (solo lectura): ¿detecta comprobaciones.yml una plantilla a medio crear?
+# Con -e pve_plantilla_vmid=3010 (una VM del laboratorio que NO es plantilla) debe salir false.
+- name: Estado de la plantilla
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  tasks:
+    - name: Comprobaciones previas
+      ansible.builtin.include_tasks: ../tareas/comprobaciones.yml
+
+    - name: Resultado
+      ansible.builtin.assert:
+        that: lab_plantilla_lista | bool == (esperado | bool)
+        fail_msg: "lab_plantilla_lista={{ lab_plantilla_lista | default('SIN DEFINIR') }}, se esperaba {{ esperado }}"

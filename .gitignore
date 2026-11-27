@@ -21,3 +21,6 @@ entregas/
 .venv/
 __pycache__/
 *.retry
+
+# Claves generadas por los playbooks de proxmox/
+proxmox/secretos/

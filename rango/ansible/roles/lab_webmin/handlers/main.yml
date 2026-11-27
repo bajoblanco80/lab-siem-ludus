@@ -1,0 +1,5 @@
+---
+- name: Reiniciar Webmin
+  ansible.builtin.systemd:
+    name: webmin
+    state: restarted

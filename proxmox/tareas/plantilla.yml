@@ -1,0 +1,69 @@
+---
+# Plantilla Debian 12 (imagen cloud oficial) con unidad cloud-init. Si la VM ya existe pero
+# no se llegó a convertir (despliegue cortado), solo la convierte.
+
+- name: ¿Existe ya la VM de la plantilla?
+  ansible.builtin.set_fact:
+    lab_plantilla_existe: "{{ pve_plantilla_vmid in (lab_recursos | map(attribute='vmid') | list) }}"
+
+- name: Imágenes en el almacenamiento
+  ansible.builtin.include_tasks: api.yml
+  vars:
+    api_metodo: GET
+    api_ruta: "/nodes/{{ pve_nodo }}/storage/{{ pve_storage_imagen }}/content?content=import"
+  when: not lab_plantilla_existe | bool
+
+- name: Comprobar si la imagen ya está descargada
+  vars:
+    lab_volid: "{{ pve_storage_imagen }}:import/{{ pve_imagen_fichero }}"
+  ansible.builtin.set_fact:
+    lab_imagen_presente: "{{ lab_plantilla_existe | bool or api_resultado.json.data | selectattr('volid', 'equalto', lab_volid) | list | length > 0 }}"
+
+- name: Leer la suma SHA512 oficial de la imagen
+  ansible.builtin.uri:
+    url: "{{ pve_imagen_sumas_url }}"
+    return_content: true
+  register: lab_sumas
+  when: not lab_imagen_presente | bool
+
+- name: Descargar la imagen en el nodo (verificada con su SHA512)
+  ansible.builtin.include_tasks: api.yml
+  vars:
+    api_metodo: POST
+    api_ruta: "/nodes/{{ pve_nodo }}/storage/{{ pve_storage_imagen }}/download-url"
+    api_datos:
+      content: import
+      filename: "{{ pve_imagen_fichero }}"
+      url: "{{ pve_imagen_url }}"
+      checksum: "{{ lab_sumas.content | regex_search('^([0-9a-f]{128})\\s+' ~ (pve_imagen_fichero | regex_escape) ~ '$', '\\1', multiline=True) | first }}"
+      checksum-algorithm: sha512
+  when: not lab_imagen_presente | bool
+
+- name: Crear la VM de la plantilla con el disco importado
+  ansible.builtin.include_tasks: api.yml
+  vars:
+    api_metodo: POST
+    api_ruta: "/nodes/{{ pve_nodo }}/qemu"
+    api_datos:
+      vmid: "{{ pve_plantilla_vmid }}"
+      name: debian12-cloud
+      memory: 1024
+      cores: 1
+      cpu: host
+      ostype: l26
+      scsihw: virtio-scsi-single
+      scsi0: "{{ pve_storage_vm }}:0,import-from={{ pve_storage_imagen }}:import/{{ pve_imagen_fichero }}"
+      ide2: "{{ pve_storage_vm }}:cloudinit"
+      boot: order=scsi0
+      serial0: socket
+      vga: serial0
+      agent: 0
+      ciupgrade: 0
+      tags: "{{ pve_etiqueta }}"
+  when: not lab_plantilla_existe | bool
+
+- name: Convertir en plantilla
+  ansible.builtin.include_tasks: api.yml
+  vars:
+    api_metodo: POST
+    api_ruta: "/nodes/{{ pve_nodo }}/qemu/{{ pve_plantilla_vmid }}/template"

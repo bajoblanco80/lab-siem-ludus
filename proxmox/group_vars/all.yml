@@ -1,0 +1,65 @@
+---
+# ---------------------------------------------------------------------------
+# Proxmox. Las credenciales NO van aquí: se leen del entorno
+# (PROXMOX_HOST, PROXMOX_TOKEN_ID, PROXMOX_TOKEN_SECRET). Ver docs/08-proxmox-nativo.md.
+# ---------------------------------------------------------------------------
+pve_api_url: "{{ lookup('ansible.builtin.env', 'PROXMOX_HOST') }}/api2/json"
+pve_api_cabecera: "PVEAPIToken={{ lookup('ansible.builtin.env', 'PROXMOX_TOKEN_ID') }}={{ lookup('ansible.builtin.env', 'PROXMOX_TOKEN_SECRET') }}"
+pve_nodo: pve3
+# IP del nodo en tu LAN: por ella se enrutan las redes del laboratorio desde tu equipo.
+pve_nodo_ip: 192.168.1.103
+# Tu LAN de gestión: sigue siendo accesible desde srv y siem con el modo de pruebas activo.
+pve_lan: 192.168.1.0/24
+pve_storage_vm: local-lvm
+pve_storage_imagen: local
+pve_etiqueta: lab-servicios
+
+# Redes (SDN, zona simple). testlab no tiene subred: queda aislada, como la red
+# host-only del PDF, y solo sale a otras redes a través de srv.
+pve_zona: labsrv
+pve_vnets:
+  - { nombre: soc, subred: 10.20.20.0/24, gateway: 10.20.20.1, snat: true }
+  - { nombre: nat, subred: 22.44.77.0/24, gateway: 22.44.77.2, snat: true }
+  - { nombre: testlab }
+
+# Plantilla Debian 12 a partir de la imagen cloud oficial.
+pve_plantilla_vmid: 9020
+pve_imagen_url: https://cloud.debian.org/images/cloud/bookworm/latest/debian-12-genericcloud-amd64.qcow2
+pve_imagen_sumas_url: https://cloud.debian.org/images/cloud/bookworm/latest/SHA512SUMS
+pve_imagen_fichero: debian-12-genericcloud-amd64.qcow2
+
+# ---------------------------------------------------------------------------
+# Máquinas (mismos últimos octetos que el PDF de Webmin).
+# ---------------------------------------------------------------------------
+lab_vms:
+  - nombre: siem
+    vmid: 3010
+    ram_mb: 8192
+    cores: 4
+    disco_gb: 40
+    nics: [{ vnet: soc, ip: 10.20.20.10/24, gw: 10.20.20.1 }]
+  - nombre: srv
+    vmid: 3011
+    ram_mb: 2048
+    cores: 2
+    disco_gb: 10
+    nics: [{ vnet: nat, ip: 22.44.77.250/24, gw: 22.44.77.2 }, { vnet: testlab, ip: 10.20.30.250/24 }]
+  - nombre: ns2
+    vmid: 3012
+    ram_mb: 1024
+    cores: 1
+    disco_gb: 10
+    nics: [{ vnet: testlab, ip: 10.20.30.249/24 }]
+  - nombre: cliente
+    vmid: 3013
+    ram_mb: 1024
+    cores: 1
+    disco_gb: 10
+    nics: [{ vnet: testlab, ip: 10.20.30.5/24 }]
+
+lab_dns: 9.9.9.9
+lab_ssh_clave_publica_fichero: "{{ lookup('ansible.builtin.env', 'HOME') }}/.ssh/id_ed25519.pub"
+
+# Roles
+lab_siem_ip: 10.20.20.10
+lab_webmin_root_password: "{{ lookup('ansible.builtin.password', playbook_dir ~ '/secretos/webmin.txt', length=20, chars=['ascii_letters', 'digits']) }}"

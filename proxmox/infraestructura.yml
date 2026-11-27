@@ -1,0 +1,21 @@
+---
+# Infraestructura del itinerario «servicios» en Proxmox VE, solo con la API:
+# comprobaciones, redes SDN, plantilla Debian 12 y máquinas. Lo importa desplegar.yml.
+- name: Infraestructura en Proxmox (API)
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  tasks:
+    - name: Comprobaciones previas
+      ansible.builtin.include_tasks: tareas/comprobaciones.yml
+
+    - name: Redes (SDN)
+      ansible.builtin.include_tasks: tareas/sdn.yml
+
+    # También si la VM existe sin convertir (despliegue cortado durante la importación).
+    - name: Plantilla Debian 12
+      ansible.builtin.include_tasks: tareas/plantilla.yml
+      when: not lab_plantilla_lista | bool
+
+    - name: Máquinas
+      ansible.builtin.include_tasks: tareas/vms.yml

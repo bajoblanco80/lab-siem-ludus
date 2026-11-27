@@ -105,3 +105,31 @@ laboratorio no configura. Ver "Ampliaciones" en el itinerario avanzado.
   aparecerá como evento sin alerta, lo que sirve para el ejercicio de escribir
   una regla propia.
 - El **tráfico de red**: no hay IDS de red (Suricata/Zeek) en este laboratorio.
+
+## Itinerario servicios (Proxmox sin Ludus)
+
+Diagramas: [arquitectura y flujo de auditoría](diagramas/arquitectura-servicios.html) ·
+[mapa de red](diagramas/mapa-red-servicios.html). Despliegue: [08-proxmox-nativo.md](08-proxmox-nativo.md).
+
+| VM | Red | IP | Qué lleva al desplegar |
+| --- | --- | --- | --- |
+| `siem` | `soc` | 10.20.20.10 | Wazuh (manager + indexer + dashboard) |
+| `srv` | `nat` + `testlab` | 22.44.77.250 · 10.20.30.250 | Webmin, agente (logs de Apache + FIM de `/etc/bind`, `/etc/dhcp`, `/etc/samba`, `/etc/apache2`, `/etc/ldap`, `/etc/webmin`, `/etc/iptables`) |
+| `ns2` | `testlab` | 10.20.30.249 | Webmin, agente (FIM de `/etc/bind`, `/etc/webmin`) |
+| `cliente` | `testlab` | 10.20.30.5 | Webmin, agente (FIM de `nsswitch.conf`, `/etc/pam.d`, `nslcd.conf`), `dig`, `smbclient`, `ldap-utils`, `nmap` |
+
+Los servicios los monta el alumno con Webmin; el agente ya está esperando sus logs. named,
+dhcpd, slapd, smbd (con `logging = syslog`), Webmin y el kernel (iptables `LOG`) llegan por el
+**journal de systemd**, que el agente de Wazuh 4.14 lee por defecto en Debian 12 (comprobado: su
+`ossec.conf` solo trae `journald`, `dpkg.log` y los logs de Apache que añade el rol). rsyslog
+deja además copia en `/var/log/syslog` y `/var/log/auth.log`, que es donde el alumno las busca. Wazuh trae reglas de serie para named, slapd, smbd, Apache, iptables, PAM y
+FIM; **no** para dhcpd ni Webmin, que son el material del ejercicio de regla propia.
+
+| Decisión | Motivo |
+| --- | --- |
+| Sin Ludus, solo API de Proxmox + Ansible | El centro tiene un Proxmox VE 9 y no hace falta otra capa; todo sigue siendo código |
+| SDN zona simple, IP fijas por cloud-init | Sin DHCP del SDN, que exigiría instalar `dnsmasq` en el host |
+| `testlab` sin IP del host | Es la red host-only del PDF: solo se sale por `srv`, y configurar ese router es el primer ejercicio |
+| `srv` con dos NIC | Router real, como en el PDF (Ludus solo permitía una NIC por VM) |
+| Router temporal solo durante el despliegue | `ns2` y `cliente` necesitan Internet para instalar Webmin y el agente; el alumno empieza de cero |
+| Modo de pruebas = `srv` y `siem` sin ruta por defecto (+ nota en la VM) | Corta Internet sin instantáneas ni cortafuegos del clúster. Quitar el SNAT de la subred no sirve (la regla iptables sigue en el nodo). Límite: lo deshace quien tenga `sudo` en `srv` o un reinicio |

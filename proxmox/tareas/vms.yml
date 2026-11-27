@@ -1,0 +1,33 @@
+---
+# Crea las VM que falten y arranca las que estén paradas. Usa lab_recursos (comprobaciones.yml).
+
+- name: Crear y configurar las VM que lo necesiten
+  ansible.builtin.include_tasks: vm.yml
+  loop: "{{ lab_vms }}"
+  loop_control:
+    loop_var: lab_vm
+    label: "{{ lab_vm.nombre }}"
+
+- name: Estado actual de las VM
+  ansible.builtin.include_tasks: api.yml
+  vars:
+    api_metodo: GET
+    api_ruta: /cluster/resources?type=vm
+
+- name: Arrancar las VM paradas
+  ansible.builtin.include_tasks: api.yml
+  vars:
+    api_metodo: POST
+    api_ruta: "/nodes/{{ pve_nodo }}/qemu/{{ item.vmid }}/status/start"
+  loop: >-
+    {{ api_resultado.json.data | selectattr('vmid', 'in', lab_vms | map(attribute='vmid') | list)
+       | rejectattr('status', 'equalto', 'running') | list }}
+  loop_control:
+    label: "{{ item.name }}"
+
+- name: Esperar a SSH en las VM accesibles desde este equipo
+  ansible.builtin.wait_for:
+    host: "{{ item }}"
+    port: 22
+    timeout: 300
+  loop: [10.20.20.10, 22.44.77.250]

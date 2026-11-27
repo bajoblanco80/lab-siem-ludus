@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mapa de red</title>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --color-paper:  #f5f5f5;
+      --color-ink:    #2d3142;
+      --color-muted:  #4f5d75;
+      --font-sans:    'Geist', system-ui, sans-serif;
+      --font-serif:   'Instrument Serif', serif;
+      --font-mono:    'Geist Mono', ui-monospace, monospace;
+    }
+    body {
+      font-family: var(--font-sans);
+      background: var(--color-paper);
+      color: var(--color-ink);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 3rem 1rem;
+    }
+    .frame { max-width: 1200px; width: 100%; min-width: 0; }
+    .eyebrow {
+      font-family: var(--font-mono);
+      font-size: 0.66rem;
+      font-weight: 500;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--color-muted);
+      margin-bottom: 0.5rem;
+    }
+    h1 {
+      font-family: var(--font-serif);
+      font-size: clamp(1.5rem, 2.4vw + 0.75rem, 2rem);
+      font-weight: 400;
+      letter-spacing: -0.02em;
+      line-height: 1.15;
+      margin-bottom: 1.5rem;
+    }
+    .diagram-container { width: 100%; overflow-x: auto; }
+    svg { width: 100%; min-width: 1040px; display: block; }
+    .nota { font-size: 0.85rem; color: var(--color-muted); line-height: 1.5; margin-top: 1rem; max-width: 72ch; }
+    @media print {
+      .diagram-container { overflow-x: visible; }
+      svg { min-width: 0; }
+    }
+  </style>
+</head>
+<body>
+  <div class="frame">
+    <p class="eyebrow">Mapa de red · Itinerario servicios</p>
+    <h1>La red del PDF, desplegada en pve3</h1>
+
+    <div class="diagram-container">
+    <svg viewBox="0 0 1040 504" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="mapa-red-servicios-title mapa-red-servicios-desc">
+      <title id="mapa-red-servicios-title">La red del PDF, desplegada en pve3</title>
+      <desc id="mapa-red-servicios-desc">Mapa de red del itinerario servicios: el equipo del docente llega por rutas al nodo pve3, que da salida con SNAT a las redes soc y nat; srv tiene una tarjeta en nat y otra en testlab, la red aislada donde están ns2 y cliente, y su agente informa al SIEM de la red soc.</desc>
+      <defs>
+        <pattern id="dots" width="22" height="22" patternUnits="userSpaceOnUse">
+          <circle cx="1" cy="1" r="0.9" fill="rgba(45,49,66,0.10)"/>
+        </pattern>
+        <marker id="arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#4f5d75"/></marker>
+        <marker id="arrow-accent" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#bf4520"/></marker>
+        <marker id="arrow-link" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#2e5aa8"/></marker>
+      </defs>
+
+      <rect width="100%" height="100%" fill="#f5f5f5"/>
+      <rect width="100%" height="100%" fill="url(#dots)" opacity="0.55"/>
+
+      <!-- Zonas (VNets del SDN labsrv) -->
+      <rect x="440" y="40" width="560" height="132" rx="8" fill="rgba(45,49,66,0.02)" stroke="rgba(45,49,66,0.20)" stroke-width="0.8" stroke-dasharray="4,4"/>
+      <rect x="456" y="44" width="136" height="12" fill="#f5f5f5"/>
+      <text x="524" y="53" fill="#5a6580" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.14em">SOC · 10.20.20.0/24</text>
+
+      <rect x="440" y="196" width="240" height="244" rx="8" fill="rgba(45,49,66,0.02)" stroke="rgba(45,49,66,0.20)" stroke-width="0.8" stroke-dasharray="4,4"/>
+      <rect x="456" y="200" width="136" height="12" fill="#f5f5f5"/>
+      <text x="524" y="209" fill="#5a6580" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.14em">NAT · 22.44.77.0/24</text>
+
+      <rect x="704" y="196" width="296" height="244" rx="8" fill="rgba(45,49,66,0.02)" stroke="rgba(45,49,66,0.20)" stroke-width="0.8" stroke-dasharray="4,4"/>
+      <rect x="720" y="200" width="220" height="12" fill="#f5f5f5"/>
+      <text x="830" y="209" fill="#5a6580" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.14em">TESTLAB · 10.20.30.0/24 · AISLADA</text>
+
+      <!-- Rutas de red (detrás de los nodos) -->
+      <line x1="180" y1="250" x2="244" y2="250" stroke="#2e5aa8" stroke-width="1.2" marker-end="url(#arrow-link)"/>
+      <path d="M 324,208 V 122 Q 324,114 332,114 H 600" fill="none" stroke="#2e5aa8" stroke-width="1.2" marker-end="url(#arrow-link)"/>
+      <line x1="404" y1="250" x2="464" y2="250" stroke="#2e5aa8" stroke-width="1.2" marker-end="url(#arrow-link)"/>
+      <line x1="656" y1="276" x2="728" y2="276" stroke="#bf4520" stroke-width="1.2" marker-end="url(#arrow-accent)"/>
+      <line x1="656" y1="360" x2="728" y2="360" stroke="#2e5aa8" stroke-width="1.2" marker-end="url(#arrow-link)"/>
+      <line x1="628" y1="228" x2="628" y2="156" stroke="#2e5aa8" stroke-width="1.2" marker-end="url(#arrow-link)"/>
+
+      <!-- Etiquetas de ruta -->
+      <rect x="184" y="230" width="56" height="12" rx="2" fill="#f5f5f5"/>
+      <text x="212" y="239" fill="#2e5aa8" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">RUTAS LAN</text>
+      <rect x="334" y="156" width="68" height="12" rx="2" fill="#f5f5f5"/>
+      <text x="368" y="165" fill="#2e5aa8" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">GW .1 · SNAT</text>
+      <rect x="406" y="230" width="56" height="12" rx="2" fill="#f5f5f5"/>
+      <text x="434" y="239" fill="#2e5aa8" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">.2 · SNAT</text>
+      <rect x="658" y="256" width="68" height="12" rx="2" fill="#f5f5f5"/>
+      <text x="692" y="265" fill="#bf4520" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">ETH1 · AXFR</text>
+      <rect x="664" y="340" width="56" height="12" rx="2" fill="#f5f5f5"/>
+      <text x="692" y="349" fill="#2e5aa8" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">ETH1 · LAN</text>
+      <rect x="638" y="176" width="56" height="12" rx="2" fill="#f5f5f5"/>
+      <text x="666" y="185" fill="#2e5aa8" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">1514/1515</text>
+
+      <!-- Nodo: equipo del docente / alumno -->
+      <rect x="40" y="208" width="140" height="84" rx="6" fill="#f5f5f5"/>
+      <rect x="40" y="208" width="140" height="84" rx="6" fill="rgba(79,93,117,0.10)" stroke="#5a6580" stroke-width="1"/>
+      <rect x="48" y="216" width="44" height="12" rx="2" fill="transparent" stroke="rgba(45,49,66,0.30)" stroke-width="0.8"/>
+      <text x="70" y="225" fill="#5a6580" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">EQUIPO</text>
+      <text x="110" y="252" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Tu equipo</text>
+      <text x="110" y="270" fill="#5a6580" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">Ansible · SSH</text>
+      <text x="110" y="282" fill="#5a6580" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">navegador</text>
+
+      <!-- Nodo: host pve3 -->
+      <rect x="244" y="208" width="160" height="84" rx="6" fill="#f5f5f5"/>
+      <rect x="244" y="208" width="160" height="84" rx="6" fill="rgba(45,49,66,0.03)" stroke="rgba(45,49,66,0.30)" stroke-width="1"/>
+      <rect x="252" y="216" width="36" height="12" rx="2" fill="transparent" stroke="rgba(45,49,66,0.22)" stroke-width="0.8"/>
+      <text x="270" y="225" fill="#5a6580" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">HOST</text>
+      <text x="324" y="244" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">pve3 · 192.168.1.103</text>
+      <rect x="252" y="260" width="144" height="24" rx="4" fill="rgba(45,49,66,0.05)" stroke="#4f5d75" stroke-width="0.8"/>
+      <text x="260" y="276" fill="#2d3142" font-size="12" font-family="'Geist', sans-serif">SDN labsrv</text>
+      <text x="388" y="276" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="end">PVE 9.2</text>
+
+      <!-- Nodo: siem -->
+      <rect x="600" y="72" width="240" height="84" rx="6" fill="#f5f5f5"/>
+      <rect x="600" y="72" width="240" height="84" rx="6" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+      <rect x="608" y="80" width="24" height="12" rx="2" fill="transparent" stroke="rgba(45,49,66,0.40)" stroke-width="0.8"/>
+      <text x="620" y="89" fill="#2d3142" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">VM</text>
+      <text x="720" y="108" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">siem · 10.20.20.10</text>
+      <rect x="608" y="124" width="224" height="24" rx="4" fill="rgba(45,49,66,0.05)" stroke="#4f5d75" stroke-width="0.8"/>
+      <text x="616" y="140" fill="#2d3142" font-size="12" font-family="'Geist', sans-serif">wazuh (todo en uno)</text>
+      <text x="824" y="140" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="end">4.14.11</text>
+
+      <!-- Nodo: srv (focal: router con dos NIC) -->
+      <rect x="464" y="228" width="192" height="148" rx="6" fill="#f5f5f5"/>
+      <rect x="464" y="228" width="192" height="148" rx="6" fill="rgba(191,69,32,0.08)" stroke="#bf4520" stroke-width="1"/>
+      <rect x="472" y="236" width="24" height="12" rx="2" fill="transparent" stroke="rgba(191,69,32,0.50)" stroke-width="0.8"/>
+      <text x="484" y="245" fill="#bf4520" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">VM</text>
+      <text x="560" y="268" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">srv · eth0/eth1 .250</text>
+      <rect x="472" y="280" width="176" height="24" rx="4" fill="rgba(45,49,66,0.05)" stroke="#4f5d75" stroke-width="0.8"/>
+      <text x="480" y="296" fill="#2d3142" font-size="12" font-family="'Geist', sans-serif">webmin</text>
+      <text x="640" y="296" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="end">2.670</text>
+      <rect x="472" y="312" width="176" height="24" rx="4" fill="rgba(45,49,66,0.05)" stroke="#4f5d75" stroke-width="0.8"/>
+      <text x="480" y="328" fill="#2d3142" font-size="12" font-family="'Geist', sans-serif">wazuh-agent</text>
+      <text x="640" y="328" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="end">4.14.9</text>
+      <rect x="472" y="344" width="176" height="24" rx="4" fill="rgba(45,49,66,0.05)" stroke="#4f5d75" stroke-width="0.8"/>
+      <text x="480" y="360" fill="#2d3142" font-size="12" font-family="'Geist', sans-serif">servicios del PDF</text>
+      <text x="640" y="360" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="end">alumno</text>
+
+      <!-- Nodo: ns2 -->
+      <rect x="728" y="228" width="248" height="84" rx="6" fill="#f5f5f5"/>
+      <rect x="728" y="228" width="248" height="84" rx="6" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+      <rect x="736" y="236" width="24" height="12" rx="2" fill="transparent" stroke="rgba(45,49,66,0.40)" stroke-width="0.8"/>
+      <text x="748" y="245" fill="#2d3142" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">VM</text>
+      <text x="852" y="264" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">ns2 · .249 · DNS secundario</text>
+      <rect x="736" y="280" width="232" height="24" rx="4" fill="rgba(45,49,66,0.05)" stroke="#4f5d75" stroke-width="0.8"/>
+      <text x="744" y="296" fill="#2d3142" font-size="12" font-family="'Geist', sans-serif">webmin · wazuh-agent</text>
+      <text x="960" y="296" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="end">4.14.9</text>
+
+      <!-- Nodo: cliente -->
+      <rect x="728" y="336" width="248" height="84" rx="6" fill="#f5f5f5"/>
+      <rect x="728" y="336" width="248" height="84" rx="6" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+      <rect x="736" y="344" width="24" height="12" rx="2" fill="transparent" stroke="rgba(45,49,66,0.40)" stroke-width="0.8"/>
+      <text x="748" y="353" fill="#2d3142" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">VM</text>
+      <text x="852" y="372" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">cliente · .5</text>
+      <rect x="736" y="388" width="232" height="24" rx="4" fill="rgba(45,49,66,0.05)" stroke="#4f5d75" stroke-width="0.8"/>
+      <text x="744" y="404" fill="#2d3142" font-size="12" font-family="'Geist', sans-serif">dig · smbclient · nmap</text>
+      <text x="960" y="404" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="end">Debian 12</text>
+
+      <!-- Leyenda -->
+      <line x1="40" y1="460" x2="1000" y2="460" stroke="rgba(45,49,66,0.10)" stroke-width="0.8"/>
+      <text x="40" y="476" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.18em">LEYENDA</text>
+      <rect x="40" y="484" width="14" height="10" rx="2" fill="rgba(191,69,32,0.08)" stroke="#bf4520" stroke-width="1"/>
+      <text x="60" y="492" fill="#4f5d75" font-size="8.5" font-family="'Geist', sans-serif">Router del PDF (dos tarjetas)</text>
+      <rect x="216" y="484" width="14" height="10" rx="2" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+      <text x="236" y="492" fill="#4f5d75" font-size="8.5" font-family="'Geist', sans-serif">Máquina virtual</text>
+      <rect x="336" y="484" width="14" height="10" rx="2" fill="rgba(45,49,66,0.03)" stroke="rgba(45,49,66,0.30)" stroke-width="1"/>
+      <text x="356" y="492" fill="#4f5d75" font-size="8.5" font-family="'Geist', sans-serif">Host Proxmox</text>
+      <rect x="448" y="484" width="14" height="10" rx="2" fill="rgba(79,93,117,0.10)" stroke="#5a6580" stroke-width="1"/>
+      <text x="468" y="492" fill="#4f5d75" font-size="8.5" font-family="'Geist', sans-serif">Tu equipo</text>
+      <line x1="552" y1="488" x2="580" y2="488" stroke="#2e5aa8" stroke-width="1.2" marker-end="url(#arrow-link)"/>
+      <text x="588" y="492" fill="#4f5d75" font-size="8.5" font-family="'Geist', sans-serif">Entre redes</text>
+      <line x1="680" y1="488" x2="708" y2="488" stroke="#bf4520" stroke-width="1.2" marker-end="url(#arrow-accent)"/>
+      <text x="716" y="492" fill="#4f5d75" font-size="8.5" font-family="'Geist', sans-serif">Transferencia de zona (AXFR)</text>
+    </svg>
+    </div>
+
+    <p class="nota">testlab no tiene IP del host: ns2 y cliente solo salen (y sus agentes solo llegan al
+    SIEM) cuando el alumno configura srv como router. Desde tu equipo se entra a ns2 y cliente
+    saltando por srv: <code>ssh -J labadmin@22.44.77.250 labadmin@10.20.30.5</code>.</p>
+  </div>
+</body>
+</html>

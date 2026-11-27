@@ -1,0 +1,4 @@
+---
+# Clave del usuario root de Webmin. NO la escribas aquí: la genera
+# proxmox/group_vars/all.yml y se guarda en proxmox/secretos/ (ignorado por git).
+lab_webmin_root_password: ""

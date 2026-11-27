@@ -1,0 +1,64 @@
+---
+# Router TEMPORAL en srv para que ns2 y cliente (red aislada testlab) salgan a Internet
+# durante el despliegue. No persiste: el router de verdad lo configura el alumno (PDF).
+# Uso suelto: ansible-playbook router-temporal.yml -e estado=on|off
+- name: Router temporal en srv
+  hosts: srv
+  become: true
+  vars:
+    # La interfaz de la red nat se busca por IP: con el modo de pruebas no hay ruta por
+    # defecto y ansible_default_ipv4 viene vacío.
+    lab_ip_nat: "{{ ((lab_vms | selectattr('nombre', 'equalto', 'srv') | first).nics[0].ip).split('/')[0] }}"
+    lab_if_nat: >-
+      {{ ansible_interfaces | map('regex_replace', '^', 'ansible_') | map('extract', hostvars[inventory_hostname])
+         | selectattr('ipv4', 'defined') | selectattr('ipv4.address', 'equalto', lab_ip_nat) | map(attribute='device') | first }}
+  tasks:
+    - name: Validar el estado pedido
+      ansible.builtin.assert:
+        that: estado in ['on', 'off']
+        fail_msg: "Usa -e estado=on o -e estado=off"
+        quiet: true
+
+    - name: ¿Está iptables?
+      ansible.builtin.stat:
+        path: /usr/sbin/iptables
+      register: lab_iptables
+
+    # Solo si falta: con el modo de pruebas activo no hay Internet para apt.
+    - name: Herramienta iptables (también la usa el PDF)
+      ansible.builtin.apt:
+        name: iptables
+        state: present
+        update_cache: true
+      when: estado == 'on' and not lab_iptables.stat.exists
+
+    - name: Reenvío IPv4 en caliente, sin persistir
+      ansible.builtin.command: "sysctl -w net.ipv4.ip_forward={{ 1 if estado == 'on' else 0 }}"
+      changed_when: true
+
+    - name: Enmascarar testlab hacia la red nat
+      ansible.builtin.iptables:
+        table: nat
+        chain: POSTROUTING
+        source: 10.20.30.0/24
+        out_interface: "{{ lab_if_nat }}"
+        jump: MASQUERADE
+        state: "{{ 'present' if estado == 'on' else 'absent' }}"
+
+- name: Ruta por defecto temporal en testlab
+  hosts: testlab
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Salir por srv
+      ansible.builtin.command: ip route replace default via 10.20.30.250
+      changed_when: true
+      when: estado == 'on'
+
+    - name: Quitar la salida por srv
+      ansible.builtin.command: ip route del default via 10.20.30.250
+      register: lab_ruta
+      changed_when: lab_ruta.rc == 0
+      # rc 2: la ruta ya no estaba.
+      failed_when: lab_ruta.rc not in [0, 2]
+      when: estado == 'off'

@@ -3,7 +3,7 @@
 | | |
 | --- | --- |
 | Alumno/a | |
-| Itinerario | Básico / Avanzado |
+| Itinerario | Básico / Avanzado / Servicios |
 | Fecha | |
 | Versión de Wazuh | |
 | Entorno (servidor, ID de rango) | |
@@ -15,14 +15,12 @@
 *(Máx. 10 líneas: qué se auditó, qué se encontró de más importante y qué se recomienda.)*
 
 ## 2. Alcance y entorno
-Máquinas auditadas, sistema operativo y función de cada una.
+Máquinas auditadas, sistema operativo y función de cada una: una fila por máquina de tu
+itinerario (básico y avanzado: `DC01`, `web`, `db`, `WIN11-01`; servicios: `srv`, `ns2`, `cliente`).
 
 | Máquina | SO | Función | Agente Wazuh (versión / estado) |
 | --- | --- | --- | --- |
-| DC01 | Windows Server 2022 | Controlador de dominio | |
-| web | Debian 12 | Servidor web | |
-| db | Debian 12 | Base de datos | |
-| WIN11-01 | Windows 11 | Cliente | |
+| | | | |
 
 Adjunta el informe de `scripts/verificar-laboratorio.sh --informe`.
 
@@ -44,7 +42,7 @@ Un bloque por hallazgo (mínimo: 3 en el básico, 5 en el avanzado).
 | Recomendación | |
 | Estado | Abierto / Corregido (con evidencia de la corrección) |
 
-## 5. Detección: qué vio el SIEM y qué no *(avanzado)*
+## 5. Detección: qué vio el SIEM y qué no *(avanzado; en servicios, usa las acciones de la Parte 6)*
 | Ataque | ¿Evento? | ¿Alerta? | `rule.id` / nivel | Tiempo hasta la alerta | Motivo si no hubo alerta |
 | --- | --- | --- | --- | --- | --- |
 | C1 | | | | | |
@@ -53,7 +51,7 @@ Un bloque por hallazgo (mínimo: 3 en el básico, 5 en el avanzado).
 | C4 | | | | | |
 | C5 | | | | | |
 
-## 6. Regla propia *(avanzado)*
+## 6. Regla propia *(avanzado y servicios)*
 XML de la regla, salida de `wazuh-logtest`, alerta en el dashboard y análisis de falsos positivos.
 
 ## 7. Antes y después

@@ -55,6 +55,16 @@ Itinerario básico ≈ 20 GB de RAM por alumno; avanzado ≈ 24 GB.
 | Duración orientativa | 1–2 sesiones (3–4 h cada una) | 3–4 sesiones |
 | Evaluación | [`rubrica-basico.md`](plantillas/rubrica-basico.md) | [`rubrica-avanzado.md`](plantillas/rubrica-avanzado.md) |
 
+### Tercer itinerario: servicios con Webmin (Proxmox sin Ludus)
+[`itinerario-servicios/`](itinerario-servicios/practica.md) reproduce la red del PDF
+«Configuración de servicios con Webmin» (router, DHCP, DNS maestro y secundario, Samba, Apache
+con HTTPS y OpenLDAP) y la audita con Wazuh. **No usa Ludus**: se despliega con Ansible solo
+contra la API de un Proxmox VE 9 (≈ 12 GB de VMs). FP, 3–4 sesiones, evaluación con
+[`rubrica-servicios.md`](plantillas/rubrica-servicios.md). Guía del docente:
+[docs/08-proxmox-nativo.md](docs/08-proxmox-nativo.md) · diagramas:
+[arquitectura](docs/diagramas/arquitectura-servicios.html) y
+[mapa de red](docs/diagramas/mapa-red-servicios.html).
+
 ### ¿Solo tienes 16 GB de RAM?
 Hay un **perfil lite** (`range-config-lite.yml`) que mantiene el SIEM, el Active
 Directory, el servidor web y la base de datos en ≈ 12 GB de VMs, pensado para un
@@ -65,10 +75,13 @@ ni para el itinerario avanzado.
 ## Cómo se organiza el repositorio
 
 ```
-docs/                      Guías: conceptos, docente, autoalojada, arquitectura, problemas, perfil lite, instalación en físico
-rango/                     range-config-*.yml y los 4 roles de Ansible del laboratorio
+docs/                      Guías: conceptos, docente, autoalojada, arquitectura, problemas, perfil lite, instalación en físico, Proxmox sin Ludus
+docs/diagramas/            Diagramas HTML del itinerario servicios
+rango/                     range-config-*.yml y los roles de Ansible del laboratorio (incluido lab_webmin)
+proxmox/                   Playbooks del itinerario servicios: desplegar · modo-pruebas · destruir
 itinerario-basico/         Práctica guiada paso a paso
 itinerario-avanzado/       Práctica con ataques y detección
+itinerario-servicios/      Práctica de servicios con Webmin auditados con Wazuh
 plantillas/                Informe de auditoría y rúbricas
 scripts/                   preparar-config.sh · instalar-roles.sh · verificar-laboratorio.sh
 VERIFICACION-PENDIENTE.md  Lo que NO se ha podido probar aún y cómo comprobarlo

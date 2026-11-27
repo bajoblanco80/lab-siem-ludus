@@ -1,0 +1,87 @@
+---
+# Destruye el itinerario «servicios»: SOLO las VM de lab_vms que lleven la etiqueta del
+# laboratorio y la zona SDN del laboratorio. La plantilla y la imagen se conservan salvo
+# -e borrar_plantilla=si.
+# Uso: ansible-playbook destruir.yml -e confirmar=lab-servicios
+- name: Destruir el laboratorio
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  tasks:
+    - name: Exigir confirmación explícita
+      ansible.builtin.assert:
+        that: confirmar | default('') == pve_etiqueta
+        fail_msg: "Esto borra las VM del laboratorio y sus redes. Repite con -e confirmar={{ pve_etiqueta }}"
+        quiet: true
+
+    - name: VM del clúster
+      ansible.builtin.include_tasks: tareas/api.yml
+      vars:
+        api_metodo: GET
+        api_ruta: /cluster/resources?type=vm
+
+    - name: Elegir solo VM del laboratorio, la plantilla la última
+      ansible.builtin.include_tasks: tareas/destruir-seleccion.yml
+      vars:
+        lab_recursos_destruir: "{{ api_resultado.json.data }}"
+
+    - name: Parar las VM en marcha
+      ansible.builtin.include_tasks: tareas/api.yml
+      vars:
+        api_metodo: POST
+        api_ruta: "/nodes/{{ pve_nodo }}/qemu/{{ item.vmid }}/status/stop"
+      loop: "{{ lab_borrar | selectattr('status', 'equalto', 'running') | list }}"
+      loop_control:
+        label: "{{ item.name }}"
+
+    - name: Borrar las VM
+      ansible.builtin.include_tasks: tareas/api.yml
+      vars:
+        api_metodo: DELETE
+        api_ruta: "/nodes/{{ pve_nodo }}/qemu/{{ item.vmid }}?purge=1&destroy-unreferenced-disks=1"
+      loop: "{{ lab_borrar }}"
+      loop_control:
+        label: "{{ item.name }}"
+
+    - name: Borrar la imagen Debian del almacenamiento (solo con borrar_plantilla=si)
+      ansible.builtin.include_tasks: tareas/api.yml
+      vars:
+        api_metodo: DELETE
+        lab_volid: "{{ (pve_storage_imagen ~ ':import/' ~ pve_imagen_fichero) | urlencode | replace('/', '%2F') }}"
+        api_ruta: "/nodes/{{ pve_nodo }}/storage/{{ pve_storage_imagen }}/content/{{ lab_volid }}"
+      when: borrar_plantilla | default('no') == 'si'
+
+    - name: Estado del SDN y guarda de cambios ajenos
+      ansible.builtin.include_tasks: tareas/sdn-estado.yml
+
+    - name: Borrar las subredes del laboratorio
+      ansible.builtin.include_tasks: tareas/api.yml
+      vars:
+        api_metodo: DELETE
+        api_ruta: "/cluster/sdn/vnets/{{ item.nombre }}/subnets/{{ pve_zona }}-{{ item.subred | replace('/', '-') }}"
+      loop: "{{ pve_vnets | selectattr('subred', 'defined') | selectattr('nombre', 'in', lab_sdn_vnets | map(attribute='vnet') | list) | list }}"
+      loop_control:
+        label: "{{ item.nombre }}"
+
+    - name: Borrar las VNets del laboratorio
+      ansible.builtin.include_tasks: tareas/api.yml
+      vars:
+        api_metodo: DELETE
+        api_ruta: "/cluster/sdn/vnets/{{ item.vnet }}"
+      loop: "{{ lab_sdn_vnets | selectattr('zone', 'equalto', pve_zona) | list }}"
+      loop_control:
+        label: "{{ item.vnet }}"
+
+    - name: Borrar la zona del laboratorio
+      ansible.builtin.include_tasks: tareas/api.yml
+      vars:
+        api_metodo: DELETE
+        api_ruta: "/cluster/sdn/zones/{{ pve_zona }}"
+      when: lab_sdn_zonas | selectattr('zone', 'equalto', pve_zona) | list | length > 0
+
+    - name: Aplicar el SDN
+      ansible.builtin.include_tasks: tareas/api.yml
+      vars:
+        api_metodo: PUT
+        api_ruta: /cluster/sdn
+      when: lab_sdn_zonas | selectattr('zone', 'equalto', pve_zona) | list | length > 0
